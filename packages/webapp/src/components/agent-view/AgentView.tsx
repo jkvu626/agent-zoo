@@ -38,7 +38,19 @@ export function AgentView() {
         <p className="mt-1.5 text-sm text-text-muted">{agent.personality}</p>
       </div>
       <div className="relative flex h-80 w-80 items-center justify-center">
-        <AgentSprite agent={agent} size="large" />
+        <motion.div
+          animate={{
+            y: [0, -12, 0],
+          }}
+          transition={{
+            duration: 2.5,
+            ease: "easeInOut",
+            repeat: Infinity,
+            repeatType: "loop",
+          }}
+        >
+          <AgentSprite agent={agent} size="large" />
+        </motion.div>
         <div className="absolute left-1/2 top-0 z-10 -translate-x-1/2">
           <IconButton
             aria-label="Brain"
@@ -52,8 +64,13 @@ export function AgentView() {
           <IconButton
             aria-label="Soul"
             tooltip="Soul"
+            aria-pressed={isSoulOpen}
             icon={<span className="text-sm font-semibold text-white">S</span>}
-            className="bg-[#5B5F97] text-white hover:bg-[#4C507F]"
+            className={
+              isSoulOpen
+                ? "bg-[#5B5F97] text-white hover:bg-[#4C507F] ring-2 ring-accent-orange ring-offset-2 ring-offset-bg-app"
+                : "bg-[#5B5F97] text-white hover:bg-[#4C507F]"
+            }
             onClick={() => setSoulOpen(!isSoulOpen)}
             {...buttonHoverBounce}
           />

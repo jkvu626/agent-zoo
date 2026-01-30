@@ -173,6 +173,9 @@ export function ZooDecorations() {
       <TreeTop x={18} y={70} scale={0.4} />
       <TreeTop x={82} y={68} scale={0.4} />
       <TreeTop x={54} y={86} scale={0.38} />
+      <TreeTop x={30} y={44} scale={0.6} />
+      <TreeTop x={72} y={46} scale={0.62} />
+      <TreeTop x={48} y={28} scale={0.58} />
 
       <PondShadow x={52} y={54} scale={0.95} />
       <Pond x={52} y={54} scale={0.85} />
