@@ -1,9 +1,9 @@
+import { Server } from "@modelcontextprotocol/sdk/server";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import {
-  Server,
-  StdioServerTransport,
   ListResourcesRequestSchema,
   ReadResourceRequestSchema,
-} from "@modelcontextprotocol/sdk/server";
+} from "@modelcontextprotocol/sdk/types.js";
 import type { AgentStore } from "./store.js";
 
 const AGENT_ZOO_SCHEME = "agent-zoo";
@@ -18,14 +18,18 @@ export async function runMcpServer(store: AgentStore): Promise<void> {
       capabilities: {
         resources: {},
       },
-    }
+    },
   );
 
   server.setRequestHandler(ListResourcesRequestSchema, async () => {
     const agents = await store.getAll();
     return {
       resources: [
-        { uri: `${AGENT_ZOO_SCHEME}://agents`, name: "Agent list", description: "All agents" },
+        {
+          uri: `${AGENT_ZOO_SCHEME}://agents`,
+          name: "Agent list",
+          description: "All agents",
+        },
         {
           uri: `${AGENT_ZOO_SCHEME}://agents/current`,
           name: "Current agent",
@@ -40,7 +44,8 @@ export async function runMcpServer(store: AgentStore): Promise<void> {
     };
   });
 
-  server.setRequestHandler(ReadResourceRequestSchema, async ({ uri }) => {
+  server.setRequestHandler(ReadResourceRequestSchema, async ({ params }) => {
+    const { uri } = params;
     const parsed = new URL(uri);
     if (parsed.protocol !== `${AGENT_ZOO_SCHEME}:`) {
       throw new Error(`Unknown scheme: ${parsed.protocol}`);

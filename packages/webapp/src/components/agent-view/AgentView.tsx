@@ -1,7 +1,6 @@
 import { motion } from "framer-motion";
 import { useNavigate, useParams } from "react-router-dom";
 import { fadeInUp } from "../../theme/motion";
-import { mockAgents } from "../../data/mockAgents";
 
 const buttonHoverBounce = {
   whileHover: { scale: 1.12 },
@@ -10,19 +9,45 @@ const buttonHoverBounce = {
 import { AgentSprite } from "../agent/AgentSprite";
 import { IconButton } from "../ui/IconButton";
 import { useLayoutState } from "../layout/AppShell";
+import { EmptyState } from "../ui/EmptyState";
+import { ErrorMessage } from "../ui/ErrorMessage";
+import { LoadingState } from "../ui/LoadingState";
+import { Panel } from "../ui/Panel";
+import { useAgent } from "../../api/hooks";
 
 export function AgentView() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { isSoulOpen, setSoulOpen } = useLayoutState();
+  const { data: agent, isPending, isError, refetch } = useAgent(id);
 
-  const agent = mockAgents.find((item) => item.id === id);
+  if (isPending) {
+    return (
+      <Panel className="flex h-full items-center justify-center">
+        <LoadingState label="Loading agent" />
+      </Panel>
+    );
+  }
+
+  if (isError) {
+    return (
+      <Panel className="flex h-full items-center justify-center">
+        <ErrorMessage
+          message="Unable to load agent."
+          onRetry={() => refetch()}
+        />
+      </Panel>
+    );
+  }
 
   if (!agent) {
     return (
-      <div className="rounded-panel border border-border bg-bg-panel p-panel">
-        <p className="text-text-primary">Agent not found.</p>
-      </div>
+      <Panel className="flex h-full items-center justify-center">
+        <EmptyState
+          title="Agent not found"
+          description="Pick another agent from the sidebar."
+        />
+      </Panel>
     );
   }
 

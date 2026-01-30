@@ -3,12 +3,16 @@ import { useNavigate, useParams } from "react-router-dom";
 import { fadeInUp } from "../../theme/motion";
 import { Button } from "../ui/Button";
 import { SkillsTree } from "./SkillsTree";
-import { mockAgents } from "../../data/mockAgents";
+import { EmptyState } from "../ui/EmptyState";
+import { ErrorMessage } from "../ui/ErrorMessage";
+import { LoadingState } from "../ui/LoadingState";
+import { Panel } from "../ui/Panel";
+import { useAgent } from "../../api/hooks";
 
 export function SkillsTreeView() {
   const navigate = useNavigate();
   const { id } = useParams();
-  const agent = mockAgents.find((item) => item.id === id);
+  const { data: agent, isPending, isError, refetch } = useAgent(id);
 
   return (
     <motion.div
@@ -34,7 +38,27 @@ export function SkillsTreeView() {
         </Button>
       </div>
       <div className="flex-1 min-h-0">
-        <SkillsTree />
+        {isPending ? (
+          <Panel className="h-full">
+            <LoadingState label="Loading skills" />
+          </Panel>
+        ) : isError ? (
+          <Panel className="h-full">
+            <ErrorMessage
+              message="Unable to load skills."
+              onRetry={() => refetch()}
+            />
+          </Panel>
+        ) : agent ? (
+          <SkillsTree agent={agent} agentId={agent.id} />
+        ) : (
+          <Panel className="h-full">
+            <EmptyState
+              title="Agent not found"
+              description="Pick another agent to view skills."
+            />
+          </Panel>
+        )}
       </div>
     </motion.div>
   );

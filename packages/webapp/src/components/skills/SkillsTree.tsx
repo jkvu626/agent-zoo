@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
-import { useParams } from "react-router-dom";
+import type { Agent } from "@agent-zoo/types";
 import {
   categoryLabels,
   skillCatalog,
   type Skill,
   type SkillCategory,
 } from "../../data/mockSkills";
-import { mockAgents } from "../../data/mockAgents";
 import { cn } from "../../utils/cn";
+import { useUpdateAgent } from "../../api/hooks";
 import "./skills.css";
 
 const skillMap = new Map<string, Skill>(
@@ -22,9 +22,13 @@ const categoryOrder = Array.from(
 
 type CategoryState = "none" | "mixed" | "active";
 
-export function SkillsTree() {
-  const { id } = useParams();
-  const agent = mockAgents.find((item) => item.id === id);
+type SkillsTreeProps = {
+  agent: Agent;
+  agentId: string;
+};
+
+export function SkillsTree({ agent, agentId }: SkillsTreeProps) {
+  const updateAgent = useUpdateAgent();
   const [hoveredSkillId, setHoveredSkillId] = useState<string | null>(null);
   const skillsByCategory = useMemo(() => {
     const groups = new Map<SkillCategory, Skill[]>();
@@ -45,9 +49,6 @@ export function SkillsTree() {
   }, []);
 
   const initialEnabled = useMemo(() => {
-    if (!agent) {
-      return new Set<string>();
-    }
     const ids = Object.entries(agent.skills)
       .filter(([, enabled]) => enabled)
       .map(([key]) => nameToId.get(key.toLowerCase()) ?? key)
@@ -63,6 +64,21 @@ export function SkillsTree() {
     setEnabledSkills(new Set(initialEnabled));
   }, [initialEnabled]);
 
+  const toSkillsPayload = (enabled: Set<string>) => {
+    const nextSkills: Record<string, boolean> = { ...agent.skills };
+    skillCatalog.forEach((skill) => {
+      nextSkills[skill.id] = enabled.has(skill.id);
+    });
+    return nextSkills;
+  };
+
+  const persistSkills = (enabled: Set<string>) => {
+    updateAgent.mutate({
+      id: agentId,
+      updates: { skills: toSkillsPayload(enabled) },
+    });
+  };
+
   const handleToggle = (skillId: string) => {
     setEnabledSkills((prev) => {
       const next = new Set(prev);
@@ -71,6 +87,7 @@ export function SkillsTree() {
       } else {
         next.add(skillId);
       }
+      persistSkills(next);
       return next;
     });
   };
@@ -104,6 +121,7 @@ export function SkillsTree() {
       } else {
         categorySkills.forEach((skill) => next.add(skill.id));
       }
+      persistSkills(next);
       return next;
     });
   };

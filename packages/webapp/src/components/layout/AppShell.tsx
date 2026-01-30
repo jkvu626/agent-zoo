@@ -24,7 +24,6 @@ export function useLayoutState() {
 export function AppShell({ children }: PropsWithChildren) {
   const location = useLocation();
   const [isSoulOpen, setSoulOpen] = useState(false);
-  const [soulPrompts, setSoulPrompts] = useState<Record<string, string>>({});
 
   const agentMatch = matchPath({ path: "/agent/:id" }, location.pathname);
   const skillsMatch = matchPath(
@@ -35,22 +34,10 @@ export function AppShell({ children }: PropsWithChildren) {
   const currentAgentId = agentMatch?.params?.id ?? null;
   const isAgentView = Boolean(agentMatch) && !skillsMatch;
 
-  const promptValue =
-    currentAgentId && soulPrompts[currentAgentId]
-      ? soulPrompts[currentAgentId]
-      : "";
-
   const layoutValue = useMemo(
     () => ({ isSoulOpen, setSoulOpen }),
     [isSoulOpen],
   );
-
-  const handlePromptSubmit = (value: string) => {
-    if (!currentAgentId) {
-      return;
-    }
-    setSoulPrompts((prev) => ({ ...prev, [currentAgentId]: value }));
-  };
 
   return (
     <LayoutContext.Provider value={layoutValue}>
@@ -64,8 +51,7 @@ export function AppShell({ children }: PropsWithChildren) {
             </main>
             <RightSidebar
               isOpen={isAgentView && isSoulOpen}
-              prompt={promptValue}
-              onPromptSubmit={handlePromptSubmit}
+              agentId={currentAgentId}
             />
           </div>
         </div>

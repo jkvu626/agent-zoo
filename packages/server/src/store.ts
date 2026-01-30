@@ -38,7 +38,11 @@ export class JsonFileStore implements AgentStore {
     } catch (err: unknown) {
       if ((err as NodeJS.ErrnoException).code === "ENOENT") {
         await mkdir(dirname(this.path), { recursive: true });
-        await writeFile(this.path, JSON.stringify(defaultStore, null, 2), "utf-8");
+        await writeFile(
+          this.path,
+          JSON.stringify(defaultStore, null, 2),
+          "utf-8",
+        );
         this.cache = { ...defaultStore };
         return this.cache;
       }
@@ -86,7 +90,7 @@ export class JsonFileStore implements AgentStore {
     const store = await this.read();
     const agent: Agent = {
       ...input,
-      id: input.id ?? randomUUID(),
+      id: randomUUID(),
       skills: input.skills ?? {},
       contextRefs: input.contextRefs ?? [],
     };
@@ -95,7 +99,10 @@ export class JsonFileStore implements AgentStore {
     return agent;
   }
 
-  async update(id: string, data: Partial<Omit<Agent, "id">>): Promise<Agent | null> {
+  async update(
+    id: string,
+    data: Partial<Omit<Agent, "id">>,
+  ): Promise<Agent | null> {
     const store = await this.read();
     const idx = store.agents.findIndex((a) => a.id === id);
     if (idx === -1) return null;
