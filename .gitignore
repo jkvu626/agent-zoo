@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+*.tsbuildinfo
+
+# Env and secrets
+.env
+.env.local
+.env.*.local
+
+# Store (MVP: JSON file)
+agents.json
+.agent-zoo/
+
+# IDE / OS
+.DS_Store
+Thumbs.db
+*.log
+.idea/
+.vscode/
+
+# Vite
+*.local
+
+# pnpm
+.pnpm-store/
+pnpm-debug.log*

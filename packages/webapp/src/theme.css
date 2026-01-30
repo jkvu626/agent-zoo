@@ -1,0 +1,46 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Colors (AESTHETICS.md) */
+  --bg-app: #f9f4ed;
+  --bg-sidebar: #ebe4d9;
+  --bg-panel: #ffffff;
+  --accent-orange: #d9833e;
+  --accent-green: #6b705c;
+  --text-primary: #4a3728;
+  --text-muted: #8c7867;
+  --border: #e3d5c1;
+  --accent-orange-muted: #b86b2e;
+
+  /* Typography */
+  --font-display: "Fredoka", sans-serif;
+  --font-body: "Cabin", "Segoe UI", sans-serif;
+  --text-small: 0.875rem;
+  --text-body: 1rem;
+  --text-large: 1.25rem;
+  --text-display: 1.5rem;
+
+  /* Spacing & radius */
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-panel: 1rem;
+  --radius-card: 0.75rem;
+  --padding-card: 1rem;
+  --padding-panel: 1.25rem;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: var(--text-body);
+  color: var(--text-primary);
+  background-color: var(--bg-app);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  min-height: 100vh;
+}

@@ -1,0 +1,17 @@
+{
+  "name": "agent-zoo",
+  "private": true,
+  "version": "0.1.0",
+  "description": "AgentZoo — personal agent hub with MCP and cozy UI",
+  "scripts": {
+    "dev": "pnpm --filter @agent-zoo/types build && pnpm --filter @agent-zoo/server --filter @agent-zoo/webapp -r --parallel run dev",
+    "dev:server": "pnpm --filter @agent-zoo/server dev",
+    "dev:webapp": "pnpm --filter @agent-zoo/webapp dev",
+    "build": "pnpm run -r build",
+    "start": "pnpm --filter @agent-zoo/server start"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "pnpm@9.14.2"
+}
