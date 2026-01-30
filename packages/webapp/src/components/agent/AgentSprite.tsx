@@ -105,7 +105,8 @@ const sizeClasses = {
 };
 
 function generateAppearance(agent: Agent): AgentAppearance {
-  const hash = agent.id.split("").reduce((acc, char) => {
+  const seed = agent.appearanceSeed ?? agent.id;
+  const hash = seed.split("").reduce((acc, char) => {
     return char.charCodeAt(0) + ((acc << 5) - acc);
   }, 0);
 
@@ -136,8 +137,8 @@ function generateAppearance(agent: Agent): AgentAppearance {
     },
   };
 
-  if (agent.id in curated) {
-    return { ...defaultAppearance, ...curated[agent.id] } as AgentAppearance;
+  if (seed in curated) {
+    return { ...defaultAppearance, ...curated[seed] } as AgentAppearance;
   }
 
   const accessories: AgentAppearance["accessory"][] = [

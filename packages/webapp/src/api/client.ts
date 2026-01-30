@@ -7,9 +7,10 @@ import type {
 const BASE_URL = "/api";
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const hasBody = options.body !== undefined;
   const response = await fetch(`${BASE_URL}${path}`, {
     headers: {
-      "Content-Type": "application/json",
+      ...(hasBody ? { "Content-Type": "application/json" } : {}),
       ...(options.headers ?? {}),
     },
     ...options,

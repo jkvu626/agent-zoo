@@ -1,4 +1,4 @@
-import type { Agent, StoreShape } from "@agent-zoo/types";
+import type { Agent, CreateAgentInput, StoreShape } from "@agent-zoo/types";
 
 /**
  * Store interface so we can swap JSON file → SQLite → DB later.
@@ -9,7 +9,7 @@ export interface AgentStore {
   getCurrent(): Promise<Agent | null>;
   getCurrentId(): Promise<string | null>;
   setCurrentId(id: string | null): Promise<void>;
-  create(agent: Omit<Agent, "id">): Promise<Agent>;
+  create(agent: CreateAgentInput): Promise<Agent>;
   update(id: string, data: Partial<Omit<Agent, "id">>): Promise<Agent | null>;
   delete(id: string): Promise<boolean>;
 }
@@ -85,14 +85,32 @@ export class JsonFileStore implements AgentStore {
     await this.write(store);
   }
 
-  async create(input: Omit<Agent, "id">): Promise<Agent> {
+  async create(input: CreateAgentInput): Promise<Agent> {
     const { randomUUID } = await import("node:crypto");
     const store = await this.read();
+    const ensureUniqueId = (baseId: string) => {
+      if (!store.agents.some((agent) => agent.id === baseId)) {
+        return baseId;
+      }
+      let counter = 2;
+      let candidate = `${baseId}-${counter}`;
+      while (store.agents.some((agent) => agent.id === candidate)) {
+        counter += 1;
+        candidate = `${baseId}-${counter}`;
+      }
+      return candidate;
+    };
+
+    const requestedId = input.id?.trim();
+    const appearanceSeed =
+      input.appearanceSeed?.trim() || requestedId || input.name;
+
     const agent: Agent = {
       ...input,
-      id: randomUUID(),
+      id: requestedId ? ensureUniqueId(requestedId) : randomUUID(),
       skills: input.skills ?? {},
       contextRefs: input.contextRefs ?? [],
+      appearanceSeed,
     };
     store.agents.push(agent);
     await this.write(store);

@@ -1,8 +1,7 @@
 import type { Agent } from "@agent-zoo/types";
-import { motion, useAnimationControls } from "framer-motion";
+import { AnimatePresence, motion, useAnimationControls } from "framer-motion";
 import { AgentSprite } from "../agent/AgentSprite";
 import { AgentNametag } from "../agent/AgentNametag";
-import { Tooltip } from "../ui/Tooltip";
 import { useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -22,6 +21,7 @@ export function ZooAgent({ agent, index }: ZooAgentProps) {
   const navigate = useNavigate();
   const controls = useAnimationControls();
   const [isWalking, setIsWalking] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
 
   const seed = useMemo(
     () => hashString(agent.id) + index * 1000,
@@ -111,28 +111,39 @@ export function ZooAgent({ agent, index }: ZooAgentProps) {
   }, [controls, bounds, index]);
 
   return (
-    <Tooltip content={agent.personality}>
-      <motion.button
-        type="button"
-        onClick={() => navigate(`/agent/${agent.id}`)}
-        className="absolute flex flex-col items-center gap-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-orange focus-visible:ring-offset-2 focus-visible:ring-offset-bg-app"
-        animate={controls}
-        whileHover={{ scale: 1.08 }}
-        whileTap={{ scale: 0.96 }}
+    <motion.button
+      type="button"
+      onClick={() => navigate(`/agent/${agent.id}`)}
+      className="absolute flex flex-col items-center gap-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-orange focus-visible:ring-offset-2 focus-visible:ring-offset-bg-app"
+      animate={controls}
+      whileHover={{ scale: 1.08 }}
+      whileTap={{ scale: 0.96 }}
+      onHoverStart={() => setIsHovered(true)}
+      onHoverEnd={() => setIsHovered(false)}
+    >
+      <div className="absolute -bottom-1 left-1/2 h-3 w-10 -translate-x-1/2 rounded-full bg-black/15 blur-sm" />
+      <motion.div
+        animate={isWalking ? { y: [0, -2, 0] } : { y: 0 }}
+        transition={
+          isWalking
+            ? { duration: 0.4, repeat: Infinity, ease: "easeInOut" }
+            : { duration: 0.3, ease: "easeOut" }
+        }
       >
-        <div className="absolute -bottom-1 left-1/2 h-3 w-10 -translate-x-1/2 rounded-full bg-black/15 blur-sm" />
-        <motion.div
-          animate={isWalking ? { y: [0, -2, 0] } : { y: 0 }}
-          transition={
-            isWalking
-              ? { duration: 0.4, repeat: Infinity, ease: "easeInOut" }
-              : { duration: 0.3, ease: "easeOut" }
-          }
-        >
-          <AgentSprite agent={agent} size="small" />
-        </motion.div>
-        <AgentNametag name={agent.name} />
-      </motion.button>
-    </Tooltip>
+        <AgentSprite agent={agent} size="small" />
+      </motion.div>
+      <AnimatePresence>
+        {isHovered && (
+          <motion.div
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.15 }}
+          >
+            <AgentNametag name={agent.name} />
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.button>
   );
 }

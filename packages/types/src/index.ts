@@ -8,6 +8,7 @@ export interface Agent {
   personality: string;
   skills: Record<string, boolean>;
   contextRefs: string[];
+  appearanceSeed?: string;
 }
 
 export interface StoreShape {

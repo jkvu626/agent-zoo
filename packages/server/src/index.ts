@@ -37,7 +37,8 @@ async function main() {
     }),
   }).catch(() => {});
   // #endregion
-  const app = Fastify({ logger: { level: "info" } });
+  // Logger must write to stderr (not stdout) because MCP uses stdio transport
+  const app = Fastify({ logger: { level: "info", stream: process.stderr } });
   await app.register(cors, { origin: true });
   await registerRoutes(app, store);
 
