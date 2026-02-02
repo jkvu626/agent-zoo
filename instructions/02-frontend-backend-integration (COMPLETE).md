@@ -1,4 +1,8 @@
-# 02 — Frontend–Backend integration spec
+# 02 — Frontend–Backend integration spec (COMPLETE)
+
+> **STATUS: COMPLETE**
+>
+> API client, React Query hooks, all HTTP endpoints, loading/error/empty states, Soul Editor persistence, and Skills tree persistence all implemented and working.
 
 **Scope:** Connect the webapp to the real backend API. Replace mock data with API client and React Query. Add loading, error, and empty states. Persist Soul Editor and Skills tree changes to the backend.
 

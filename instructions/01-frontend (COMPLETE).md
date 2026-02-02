@@ -1,4 +1,8 @@
-# 01 — Frontend implementation spec
+# 01 — Frontend implementation spec (COMPLETE)
+
+> **STATUS: COMPLETE**
+>
+> All UI components, routing, design tokens, motion, and accessibility implemented. Zoo view, Agent view, Skills tree, sidebars, and shared primitives all working.
 
 **Scope:** Core user views only. No backend/API integration. Use mock data and local state. Abstract UI into reusable components where it makes sense.
 

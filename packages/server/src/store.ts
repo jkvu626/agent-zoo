@@ -1,4 +1,10 @@
-import type { Agent, CreateAgentInput, StoreShape } from "@agent-zoo/types";
+import type {
+  Agent,
+  BrainEntry,
+  BrainEntryType,
+  CreateAgentInput,
+  StoreShape,
+} from "@agent-zoo/types";
 
 /**
  * Store interface so we can swap JSON file → SQLite → DB later.
@@ -12,6 +18,27 @@ export interface AgentStore {
   create(agent: CreateAgentInput): Promise<Agent>;
   update(id: string, data: Partial<Omit<Agent, "id">>): Promise<Agent | null>;
   delete(id: string): Promise<boolean>;
+  getBrainEntries(agentId: string): Promise<BrainEntry[]>;
+  createBrainEntry(
+    agentId: string,
+    entry: Omit<BrainEntry, "id" | "agentId" | "timestamp">,
+  ): Promise<BrainEntry>;
+  updateBrainEntry(
+    agentId: string,
+    entryId: string,
+    data: Partial<BrainEntry>,
+  ): Promise<BrainEntry | null>;
+  deleteBrainEntry(agentId: string, entryId: string): Promise<boolean>;
+  queryBrainEntries(
+    agentId: string,
+    filters?: {
+      type?: BrainEntryType;
+      tags?: string[];
+      dateFrom?: string;
+      dateTo?: string;
+      pinned?: boolean;
+    },
+  ): Promise<BrainEntry[]>;
 }
 
 const defaultStore: StoreShape = {
@@ -31,8 +58,9 @@ const toTitleCase = (value: string) =>
 const migrateAgent = (agent: Agent): { agent: Agent; didChange: boolean } => {
   const hasSkillArray = Array.isArray(agent.skills);
   const hasCategoryArray = Array.isArray(agent.skillCategories);
+  const hasBrainEntries = Array.isArray(agent.brainEntries);
 
-  if (hasSkillArray && hasCategoryArray) {
+  if (hasSkillArray && hasCategoryArray && hasBrainEntries) {
     return {
       agent: {
         ...agent,
@@ -75,6 +103,7 @@ const migrateAgent = (agent: Agent): { agent: Agent; didChange: boolean } => {
       skillCategories,
       skills: normalizedSkills,
       contextRefs: agent.contextRefs ?? [],
+      brainEntries: hasBrainEntries ? agent.brainEntries : [],
     },
     didChange: true,
   };
@@ -193,6 +222,7 @@ export class JsonFileStore implements AgentStore {
       skillCategories,
       skills,
       contextRefs: input.contextRefs ?? [],
+      brainEntries: input.brainEntries ?? [],
       appearanceSeed,
     };
     store.agents.push(agent);
@@ -220,5 +250,136 @@ export class JsonFileStore implements AgentStore {
     if (store.agents.length === before) return false;
     await this.write(store);
     return true;
+  }
+
+  async getBrainEntries(agentId: string): Promise<BrainEntry[]> {
+    const store = await this.read();
+    const agent = store.agents.find((a) => a.id === agentId);
+    return agent?.brainEntries ?? [];
+  }
+
+  async createBrainEntry(
+    agentId: string,
+    entry: Omit<BrainEntry, "id" | "agentId" | "timestamp">,
+  ): Promise<BrainEntry> {
+    const { randomUUID } = await import("node:crypto");
+    const store = await this.read();
+    const idx = store.agents.findIndex((a) => a.id === agentId);
+    if (idx === -1) {
+      throw new Error(`Agent with id '${agentId}' not found.`);
+    }
+
+    const trimmedTags =
+      entry.tags?.map((tag) => tag.trim()).filter(Boolean) ?? undefined;
+    const newEntry: BrainEntry = {
+      id: randomUUID(),
+      agentId,
+      type: entry.type,
+      content: entry.content,
+      timestamp: new Date().toISOString(),
+      pinned: Boolean(entry.pinned),
+      tags: trimmedTags && trimmedTags.length > 0 ? trimmedTags : undefined,
+      metadata: entry.metadata,
+    };
+
+    const agent = store.agents[idx];
+    const brainEntries = agent.brainEntries ?? [];
+    store.agents[idx] = {
+      ...agent,
+      brainEntries: [...brainEntries, newEntry],
+    };
+    await this.write(store);
+    return newEntry;
+  }
+
+  async updateBrainEntry(
+    agentId: string,
+    entryId: string,
+    data: Partial<BrainEntry>,
+  ): Promise<BrainEntry | null> {
+    const store = await this.read();
+    const idx = store.agents.findIndex((a) => a.id === agentId);
+    if (idx === -1) return null;
+
+    const agent = store.agents[idx];
+    const brainEntries = agent.brainEntries ?? [];
+    const entryIndex = brainEntries.findIndex((entry) => entry.id === entryId);
+    if (entryIndex === -1) return null;
+
+    const { id: _id, agentId: _agentId, timestamp: _timestamp, ...rest } = data;
+    const updated = {
+      ...brainEntries[entryIndex],
+      ...rest,
+    };
+    if (rest.tags) {
+      const trimmedTags = rest.tags.map((tag) => tag.trim()).filter(Boolean);
+      updated.tags = trimmedTags.length > 0 ? trimmedTags : undefined;
+    }
+
+    const nextEntries = [...brainEntries];
+    nextEntries[entryIndex] = updated;
+    store.agents[idx] = {
+      ...agent,
+      brainEntries: nextEntries,
+    };
+    await this.write(store);
+    return updated;
+  }
+
+  async deleteBrainEntry(agentId: string, entryId: string): Promise<boolean> {
+    const store = await this.read();
+    const idx = store.agents.findIndex((a) => a.id === agentId);
+    if (idx === -1) return false;
+
+    const agent = store.agents[idx];
+    const brainEntries = agent.brainEntries ?? [];
+    const nextEntries = brainEntries.filter((entry) => entry.id !== entryId);
+    if (nextEntries.length === brainEntries.length) return false;
+
+    store.agents[idx] = {
+      ...agent,
+      brainEntries: nextEntries,
+    };
+    await this.write(store);
+    return true;
+  }
+
+  async queryBrainEntries(
+    agentId: string,
+    filters?: {
+      type?: BrainEntryType;
+      tags?: string[];
+      dateFrom?: string;
+      dateTo?: string;
+      pinned?: boolean;
+    },
+  ): Promise<BrainEntry[]> {
+    const entries = await this.getBrainEntries(agentId);
+    if (!filters) return entries;
+
+    const normalizedTags =
+      filters.tags?.map((tag) => tag.trim()).filter(Boolean) ?? [];
+    const dateFrom = filters.dateFrom
+      ? new Date(filters.dateFrom).getTime()
+      : null;
+    const dateTo = filters.dateTo ? new Date(filters.dateTo).getTime() : null;
+
+    return entries.filter((entry) => {
+      if (filters.type && entry.type !== filters.type) return false;
+      if (filters.pinned !== undefined && entry.pinned !== filters.pinned) {
+        return false;
+      }
+      if (normalizedTags.length > 0) {
+        const entryTags = entry.tags ?? [];
+        const hasTag = normalizedTags.some((tag) => entryTags.includes(tag));
+        if (!hasTag) return false;
+      }
+      if (dateFrom || dateTo) {
+        const entryTime = new Date(entry.timestamp).getTime();
+        if (dateFrom && entryTime < dateFrom) return false;
+        if (dateTo && entryTime > dateTo) return false;
+      }
+      return true;
+    });
   }
 }

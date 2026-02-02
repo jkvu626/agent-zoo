@@ -1,5 +1,20 @@
 # 06 — Real-time sync spec
 
+> **STATUS: NOT COMPLETE — Not implemented**
+>
+> **Current state:**
+> - HTTP API is fully functional
+> - React Query polling/refetch works for updates
+>
+> **Missing (all items):**
+> - No WebSocket server (`ws` library not installed)
+> - No WebSocket route/handler in server
+> - No event broadcasting for `agent:created`, `agent:updated`, `agent:deleted`, `current:changed`
+> - No `useAgentSync` hook in webapp
+> - No real-time push updates
+>
+> **Alignment:** `docs/MCP-ARCHITECTURE.md` mentions WebSocket as "optional" — spec is more explicit. Spec is well-aligned with project vision.
+
 **Scope:** Add WebSocket support on the backend and a frontend hook to receive live updates. When agents or current agent change (via API or MCP), connected clients (webapp, and optionally IDE) get pushed events so they can invalidate or refresh data without polling.
 
 **References:** `research/next-steps.md`, `packages/server`, `packages/webapp`, `@agent-zoo/types`.

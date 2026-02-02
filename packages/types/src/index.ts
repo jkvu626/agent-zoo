@@ -16,6 +16,23 @@ export interface Skill {
   enabled: boolean;
 }
 
+export type BrainEntryType = "decision" | "milestone" | "note" | "summary";
+
+export interface BrainEntry {
+  id: string;
+  agentId: string;
+  type: BrainEntryType;
+  content: string;
+  timestamp: string; // ISO 8601
+  pinned: boolean;
+  tags?: string[];
+  metadata?: {
+    source?: "manual" | "auto" | "mcp";
+    sessionId?: string;
+    workspaceId?: string;
+  };
+}
+
 export interface Agent {
   id: string;
   name: string;
@@ -24,6 +41,7 @@ export interface Agent {
   skillCategories: SkillCategory[];
   skills: Skill[];
   contextRefs: string[];
+  brainEntries?: BrainEntry[];
   appearanceSeed?: string;
 }
 

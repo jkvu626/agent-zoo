@@ -8,7 +8,7 @@ How the webapp, IDE agent, and persistent config stay in sync.
 
 - **Webapp**: User customizes agents (skills, personality, etc.) in a cozy UI.
 - **IDE**: An agent (e.g. Cursor’s agent) needs to read that config and behave accordingly.
-- **MCP**: Agents are *clients* that talk to MCP *servers*. The server can’t “connect to an agent”; the agent connects to the server.
+- **MCP**: Agents are _clients_ that talk to MCP _servers_. The server can’t “connect to an agent”; the agent connects to the server.
 
 So we need: **one source of truth** (a store) that the webapp writes to and an **MCP server** the IDE agent connects to that reads (and optionally writes) that same store.
 
@@ -46,7 +46,7 @@ So we need: **one source of truth** (a store) that the webapp writes to and an *
 
 **Location**: e.g. `~/.agent-zoo/agents.json` or `<workspace>/.agent-zoo/agents.json`.
 
-**Shape (minimal for MVP)**:
+**Shape**:
 
 ```json
 {
@@ -54,12 +54,22 @@ So we need: **one source of truth** (a store) that the webapp writes to and an *
     {
       "id": "agent-1",
       "name": "Helper",
-      "personality": "You are a concise coding assistant.",
-      "skills": {
-        "skill-a": true,
-        "skill-b": false
-      },
-      "contextRefs": []
+      "description": "A helpful coding assistant",
+      "systemPrompt": "You are a concise coding assistant.",
+      "skillCategories": [
+        { "id": "cat-1", "name": "Coding", "color": "#f97316" }
+      ],
+      "skills": [
+        {
+          "id": "skill-a",
+          "name": "TypeScript Expert",
+          "description": "Prefer strict types, use interfaces...",
+          "categoryId": "cat-1",
+          "enabled": true
+        }
+      ],
+      "contextRefs": [],
+      "appearanceSeed": "helper"
     }
   ],
   "currentAgentId": "agent-1"
@@ -67,6 +77,7 @@ So we need: **one source of truth** (a store) that the webapp writes to and an *
 ```
 
 - `currentAgentId`: which agent the IDE should use in this workspace (or globally).
+- `skills`: Array of skill objects with `enabled` flag (not a simple boolean map).
 
 You can later add a DB; the server remains the only reader/writer.
 
@@ -81,35 +92,52 @@ One long-running process that:
 
 So Cursor runs the server as an MCP server; the webapp opens `http://localhost:3912` and uses REST or WebSocket to read/write.
 
-**MCP resources** (read-only for MVP):
+**MCP resources** (read-only):
 
-| URI | Description |
-|-----|-------------|
-| `agent-zoo://agents` | List of all agents (id, name). |
-| `agent-zoo://agents/{id}` | Full config for one agent. |
-| `agent-zoo://agents/current` | Config for the agent selected as “current”. |
+| URI                                       | Description                                                                                                                         |
+| ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `agent-zoo://agents`                      | List of all agents (id, name).                                                                                                      |
+| `agent-zoo://agents/current`              | Full config for the agent selected as “current”.                                                                                    |
+| `agent-zoo://agents/{id}`                 | Full config for one agent.                                                                                                          |
+| `agent-zoo://agents/{id}/brain`           | Brain timeline entries for that agent. Query params: `type`, `tags` (comma-separated), `dateFrom`, `dateTo`, `pinned` (true/false). |
+| `agent-zoo://agents/{id}/brain/{entryId}` | Single brain entry by ID.                                                                                                           |
 
-The IDE agent (or Cursor’s integration) fetches `agent-zoo://agents/current` to know personality and which skills are on.
+The IDE agent fetches `agent-zoo://agents/current` to know personality and which skills are on. Brain resources expose the agent’s timeline (decisions, milestones, notes, summaries).
 
-**MCP tools (optional for MVP)**:
+**MCP tools**:
 
-| Tool | Purpose |
-|------|---------|
-| `agent_zoo_get_config` | Returns current agent config (convenience wrapper around resource). |
-| `agent_zoo_set_current_agent` | Sets `currentAgentId` (so user or agent can switch agent from IDE). |
+| Tool                            | Purpose                                                                                                                                         |
+| ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `agent_zoo_inject`              | Returns compiled prompt or structured data for injection. Args: `agentId?`, `format` (`"compiled"` \| `"structured"`).                          |
+| `agent_zoo_list_agents`         | Lists all agents with `isCurrent` flag. No args.                                                                                                |
+| `agent_zoo_set_current`         | Sets `currentAgentId`. Args: `agentId` (required).                                                                                              |
+| `agent_zoo_get_agent`           | Returns full agent config (not compiled). Args: `agentId?` (defaults to current).                                                               |
+| `agent_zoo_create_brain_entry`  | Create a brain timeline entry. Args: `agentId?`, `type` (decision \| milestone \| note \| summary), `content`, `tags?`, `pinned?`, `metadata?`. |
+| `agent_zoo_update_brain_entry`  | Update an existing brain entry. Args: `agentId?`, `entryId` (required), `type?`, `content?`, `tags?`, `pinned?`, `metadata?`.                   |
+| `agent_zoo_delete_brain_entry`  | Delete a brain entry. Args: `agentId?`, `entryId` (required).                                                                                   |
+| `agent_zoo_query_brain_entries` | Query brain entries with filters. Args: `agentId?`, `type?`, `tags?`, `dateFrom?`, `dateTo?`, `pinned?`.                                        |
 
-You can skip tools at first and only use resources.
+The primary use case is `agent_zoo_inject` — called when starting a fresh chat to get the compiled system prompt.
+
+**MCP prompts**:
+
+| Name                      | Description                                                                            |
+| ------------------------- | -------------------------------------------------------------------------------------- |
+| `agent_zoo_use_current`   | “Use Current Agent” — inject the current agent’s persona and skills as a user message. |
+| `agent_zoo_use_{agentId}` | “Use Agent: {name}” — inject that agent’s persona and skills (one prompt per agent).   |
+
+Prompts return a single user message containing the injection text (intro + systemPrompt + active skills). Use when the IDE supports prompt templates to adopt an agent in one action.
 
 **HTTP API for webapp**:
 
-| Method | Path | Purpose |
-|--------|------|---------|
-| GET | `/api/agents` | List agents. |
-| GET | `/api/agents/:id` | Get one agent config. |
-| PUT | `/api/agents/:id` | Update one agent (personality, skills, etc.). |
-| POST | `/api/agents` | Create agent. |
-| GET | `/api/current` | Get current agent id. |
-| PUT | `/api/current` | Set current agent id. |
+| Method | Path              | Purpose                                       |
+| ------ | ----------------- | --------------------------------------------- |
+| GET    | `/api/agents`     | List agents.                                  |
+| GET    | `/api/agents/:id` | Get one agent config.                         |
+| PUT    | `/api/agents/:id` | Update one agent (personality, skills, etc.). |
+| POST   | `/api/agents`     | Create agent.                                 |
+| GET    | `/api/current`    | Get current agent id.                         |
+| PUT    | `/api/current`    | Set current agent id.                         |
 
 Server loads/saves the store on each read/write (or use a simple in-memory cache with write-through).
 
@@ -146,28 +174,29 @@ The server must:
 - Speak MCP over stdio (or SSE if you prefer).
 - Start the HTTP server in the same process so one run serves both MCP and webapp API.
 
-When the user (or the agent) needs the current agent’s config, the agent fetches the resource `agent-zoo://agents/current` (or calls `agent_zoo_get_config`). Cursor or your integration then uses that config (e.g. to build the system prompt or enable/disable skills).
+When the user (or the agent) needs the current agent’s config: use the **prompt** `agent_zoo_use_current` to inject persona in one step, or call **tool** `agent_zoo_inject` for compiled/structured output. For raw config, use `agent_zoo_get_agent` or the resource `agent-zoo://agents/current`. Brain tools and `agent-zoo://agents/{id}/brain` support reading/writing the agent’s timeline.
 
 ---
 
-## How “Skills” Map Into Behavior
+## How "Skills" Map Into Behavior
 
-- **In the store**: `skills` is a map of skill id → boolean (on/off).
-- **In the IDE**: The agent (or a Cursor rule) reads `agent-zoo://agents/current`, sees which skills are `true`, and:
-  - Injects instructions into the system prompt, or
-  - Enables/disables other MCP servers or tools by name.
+- **In the store**: `skills` is an array of `Skill` objects, each with `name`, `description`, `categoryId`, and `enabled` flag.
+- **In the IDE**: Call `agent_zoo_inject` to get the compiled prompt. The tool:
+  - Filters to only `enabled: true` skills.
+  - Combines `systemPrompt` + skill descriptions into a single injectable prompt.
+  - Returns either a compiled string or structured JSON (personality + skills list).
 
-So “skills” in the UI are just a persisted list of toggles; the MCP server only exposes them. The actual behavior (which prompt to add, which tools to call) is implemented in the agent/rules that consume this config.
+So "skills" in the UI are persisted skill definitions with toggles; `agent_zoo_inject` compiles them into a ready-to-use system prompt for the IDE.
 
 ---
 
 ## Summary
 
-| Piece | Responsibility |
-|-------|----------------|
-| **Store** | Single source of truth (file or DB). |
+| Piece               | Responsibility                                                                          |
+| ------------------- | --------------------------------------------------------------------------------------- |
+| **Store**           | Single source of truth (file or DB).                                                    |
 | **AgentZoo Server** | Only reader/writer of the store; exposes MCP (resources ± tools) + HTTP API for webapp. |
-| **Webapp** | UI that talks to the server over HTTP; no direct store access. |
-| **IDE agent** | MCP client that reads (and optionally updates) config via the AgentZoo server. |
+| **Webapp**          | UI that talks to the server over HTTP; no direct store access.                          |
+| **IDE agent**       | MCP client that reads (and optionally updates) config via the AgentZoo server.          |
 
 This keeps the architecture simple, avoids the “MCP server connecting to an agent” mistake, and gives you a clear path from “change in webapp” → “store updated” → “IDE agent reads updated config on next request.”

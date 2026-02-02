@@ -1,5 +1,22 @@
 # 04 — Backend hardening spec
 
+> **STATUS: NOT COMPLETE**
+>
+> **Implemented:**
+> - Zod dependency installed (but unused)
+> - Basic error responses (ad-hoc, not centralized)
+> - Fastify logger initialized (but not wired to requests)
+>
+> **Missing:**
+> - No `schemas.ts` with Zod validation schemas
+> - No `safeParse()` in routes — bodies are unvalidated
+> - No `ApiError` class or centralized error handler
+> - No `onRequest`/`onResponse` logging hooks
+> - No `LOG_LEVEL` environment variable
+> - Debug instrumentation code in `index.ts` should be removed
+>
+> **Alignment:** Spec is well-aligned with project goals. No changes needed to spec.
+
 **Scope:** Add input validation (Zod), structured error responses, and request logging to the backend API. No new routes or features; improve robustness and observability of existing endpoints.
 
 **References:** `research/next-steps.md`, `packages/server`, `@agent-zoo/types`.

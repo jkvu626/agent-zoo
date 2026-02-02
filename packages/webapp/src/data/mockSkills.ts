@@ -8,7 +8,8 @@ export type SkillCategory =
   | "analysis"
   | "execution"
   | "creativity"
-  | "leadership";
+  | "leadership"
+  | "debugging";
 
 export type Skill = {
   id: string;
@@ -25,6 +26,7 @@ export const categoryLabels: Record<SkillCategory, string> = {
   execution: "Execution",
   creativity: "Creativity",
   communication: "Communication",
+  debugging: "Debugging",
 };
 
 const categoryColors: Record<SkillCategory, string> = {
@@ -33,6 +35,7 @@ const categoryColors: Record<SkillCategory, string> = {
   execution: "#FF6B6C",
   creativity: "#E8C44A",
   communication: "#7BA35C",
+  debugging: "#D64045",
 };
 
 export const skillCatalog: Skill[] = [
@@ -189,6 +192,33 @@ export const skillCatalog: Skill[] = [
     tier: 3,
     description: "Guide groups toward alignment and decisions.",
     requires: ["clarity-writing", "calm-guidance"],
+  },
+  // Debugging skills
+  {
+    id: "error-tracing",
+    name: "Error Tracing",
+    category: "debugging",
+    tier: 1,
+    description:
+      "Follow error chains and stack traces methodically. Read error messages carefully, identify the exact line and file where failures occur, and trace the call stack upward to find the true origin of bugs.",
+  },
+  {
+    id: "hypothesis-testing",
+    name: "Hypothesis Testing",
+    category: "debugging",
+    tier: 2,
+    description:
+      "Form clear hypotheses about bug causes and design minimal reproduction steps to verify them. Use binary search (bisection) to isolate when bugs were introduced. Add strategic logging to confirm or refute assumptions.",
+    requires: ["error-tracing"],
+  },
+  {
+    id: "regression-prevention",
+    name: "Regression Prevention",
+    category: "debugging",
+    tier: 3,
+    description:
+      "Ensure fixes are complete and don't introduce new issues. Write targeted test cases that cover the bug scenario. Verify edge cases and related code paths. Document root causes to prevent similar bugs in the future.",
+    requires: ["hypothesis-testing", "reliability"],
   },
 ];
 

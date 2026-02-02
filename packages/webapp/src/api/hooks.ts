@@ -1,14 +1,25 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
   Agent,
+  BrainEntry,
   CreateAgentInput,
   UpdateAgentInput,
 } from "@agent-zoo/types";
-import { client } from "./client";
+import {
+  client,
+  type BrainEntryCreateInput,
+  type BrainEntryFilters,
+} from "./client";
 
 const agentsQueryKey = ["agents"];
 const agentQueryKey = (id: string) => ["agents", id];
 const currentAgentQueryKey = ["currentAgent"];
+const brainEntriesQueryKey = (id: string, filters?: BrainEntryFilters) => [
+  "agents",
+  id,
+  "brain",
+  filters ? JSON.stringify(filters) : "all",
+];
 
 type UpdateAgentVariables = {
   id: string;
@@ -21,6 +32,27 @@ type DeleteAgentVariables = {
 
 type SetCurrentAgentVariables = {
   id: string | null;
+};
+
+type CreateBrainEntryVariables = {
+  agentId: string;
+  entry: BrainEntryCreateInput;
+};
+
+type UpdateBrainEntryVariables = {
+  agentId: string;
+  entryId: string;
+  updates: Partial<BrainEntry>;
+};
+
+type DeleteBrainEntryVariables = {
+  agentId: string;
+  entryId: string;
+};
+
+type TogglePinEntryVariables = {
+  agentId: string;
+  entryId: string;
 };
 
 export function useAgents() {
@@ -98,6 +130,73 @@ export function useSetCurrentAgent() {
     mutationFn: ({ id }: SetCurrentAgentVariables) => client.setCurrent(id),
     onSuccess: (current) => {
       queryClient.setQueryData(currentAgentQueryKey, current);
+    },
+  });
+}
+
+export function useBrainEntries(agentId?: string, filters?: BrainEntryFilters) {
+  return useQuery({
+    queryKey: agentId
+      ? brainEntriesQueryKey(agentId, filters)
+      : ["agents", "missing-brain-agent"],
+    queryFn: () => {
+      if (!agentId) {
+        return Promise.reject(new Error("Missing agent id."));
+      }
+      return client.getBrainEntries(agentId, filters);
+    },
+    enabled: Boolean(agentId),
+  });
+}
+
+export function useCreateBrainEntry() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ agentId, entry }: CreateBrainEntryVariables) =>
+      client.createBrainEntry(agentId, entry),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["agents", variables.agentId, "brain"],
+      });
+    },
+  });
+}
+
+export function useUpdateBrainEntry() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ agentId, entryId, updates }: UpdateBrainEntryVariables) =>
+      client.updateBrainEntry(agentId, entryId, updates),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["agents", variables.agentId, "brain"],
+      });
+    },
+  });
+}
+
+export function useDeleteBrainEntry() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ agentId, entryId }: DeleteBrainEntryVariables) =>
+      client.deleteBrainEntry(agentId, entryId),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["agents", variables.agentId, "brain"],
+      });
+    },
+  });
+}
+
+export function useTogglePinEntry() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ agentId, entryId }: TogglePinEntryVariables) =>
+      client.togglePinEntry(agentId, entryId),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["agents", variables.agentId, "brain"],
+      });
     },
   });
 }

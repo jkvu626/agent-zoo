@@ -1,5 +1,18 @@
 # 05 — Testing infrastructure spec
 
+> **STATUS: NOT COMPLETE — Nothing implemented**
+>
+> **Missing (all items):**
+> - No Vitest installed or configured
+> - No `@testing-library/react`, `jest-dom`, or `jsdom`
+> - No test files anywhere (`*.test.ts`, `*.spec.ts`, `__tests__/`)
+> - No `test` scripts in any `package.json`
+> - Zero store unit tests
+> - Zero API integration tests
+> - Zero component tests
+>
+> **Alignment:** Spec is well-aligned with project. Note that `docs/TECH-STACK.md` does not mention testing — could be updated to include Vitest as the chosen test runner.
+
 **Scope:** Add Vitest and Testing Library. Introduce server unit tests (e.g. store), API integration tests (HTTP routes), and frontend component tests. Establish patterns and minimal coverage to expand later.
 
 **References:** `research/next-steps.md`, `packages/server`, `packages/webapp`, `@agent-zoo/types`.

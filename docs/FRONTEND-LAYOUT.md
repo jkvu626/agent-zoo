@@ -11,7 +11,7 @@ This doc defines the **UI structure**, **button behavior**, and **view hierarchy
 | # | Element | Role |
 |---|---------|------|
 | **1** | **Zoo Window** | Main area when no agent is selected. Stylized characters with nametags walk around a big empty area; hover shows description; click opens Agent view. Persistent header. |
-| **2** | **Left Sidebar** | List of agents **connected via MCP**. Clickable names only; selecting one opens Agent view with that agent. No "add agent" in the app—agents appear when they connect. |
+| **2** | **Left Sidebar** | List of agents. Clickable names; selecting one opens Agent view. **+ button** in header opens inline creator form to add new agents. |
 | **3** | **Agent View** | Replaces the Zoo window when an agent is selected. Same layout space. Large agent sprite in center; three circle buttons in a triangle: Brain (top), Soul (left), Skills (right). |
 | **3.5** | **Right Sidebar** | Only in Agent view. Appears when **Soul** is active. Editable system prompt for personality ("You are a teacher..."); always-on customization. |
 | **4** | **Skills Tree** | Separate view that zooms out from the agent. Opened by the **Skills** button. Skill-tree interface (MVP: structure in place). |
@@ -51,11 +51,12 @@ Use for delete, remove, "Are you sure?" actions so the palette stays warm and co
 
 ## 3. Left Sidebar
 
-- **Content:** List of agents that are **currently connected** to the webapp via MCP. No manual "add agent"—agents show up when they connect.
-- **UI:** Simple list. Each item = clickable **agent name** (no avatars required for MVP). Click → select that agent → main area switches to **Agent view** with that agent.
+- **Header:** "Agents" title with **+ button** on the right. Clicking + opens the inline **Agent Creator** form (replaces agent list with animation).
+- **Content:** List of agents. Each item = clickable **agent name** with delete button on hover. Click → select that agent → main area switches to **Agent view**.
+- **Agent Creator:** Inline form with live-morphing sprite preview, single name field, Cancel/Create buttons. Sprite appearance is procedurally generated from name hash.
 - **State:** Selected agent = active state (e.g. apricot left border or light apricot bg) so it's clear who is selected.
-- **Empty state:** If no agents connected, show a short message (e.g. "No agents connected" or "Agents will appear when they connect via MCP") so the behavior is clear.
-- **Style:** `--bg-panel`, `--border` on right edge, `--radius-panel` if you want soft inner corner. Use `springSmooth` for any list animations; optional `fadeInUp` when list updates.
+- **Empty state:** If no agents exist, show a short message encouraging the user to create one.
+- **Style:** `--bg-panel`, `--border` on right edge, `--radius-panel` if you want soft inner corner. Use `springSmooth` for view transitions and list animations.
 
 ---
 
@@ -110,7 +111,7 @@ Use for delete, remove, "Are you sure?" actions so the palette stays warm and co
 | Area | Decision |
 |------|----------|
 | **Buttons** | Primary (apricot), secondary (sage/outline), ghost, destructive (muted apricot). Rounded-rect, soft shadow, darken on hover. Tooltips on icon-only. |
-| **Left Sidebar** | List of MCP-connected agents; clickable names; no "add agent"; selection opens Agent view. |
+| **Left Sidebar** | List of agents with + button to create new ones; clickable names; selection opens Agent view. |
 | **Zoo Window** | Core to MVP. Walking stylized characters, nametags, description on hover, click → Agent view. Persistent header. |
 | **Agent View** | Same space as Zoo. Large center sprite; triangle of circles: Brain (no-op), Soul (right sidebar), Skills (Skills Tree). |
 | **Right Sidebar** | Soul only. Editable system prompt for personality; always on for agent. |

@@ -55,12 +55,29 @@ The server is the single reader/writer of the store. Webapp uses HTTP; IDE agent
 Core types in `packages/types/src/index.ts`:
 
 ```typescript
+interface Skill {
+  id: string;
+  name: string;
+  description: string;          // Injectable prompt fragment
+  categoryId: string;
+  enabled: boolean;
+}
+
+interface SkillCategory {
+  id: string;
+  name: string;
+  color: string;
+}
+
 interface Agent {
   id: string;
   name: string;
-  personality: string;           // System prompt
-  skills: Record<string, boolean>; // Skill toggles
+  description: string;
+  systemPrompt: string;          // Core personality/instructions
+  skillCategories: SkillCategory[];
+  skills: Skill[];               // Full skill objects with enabled flag
   contextRefs: string[];         // Reference paths/URLs
+  appearanceSeed?: string;       // For procedural sprite generation
 }
 ```
 

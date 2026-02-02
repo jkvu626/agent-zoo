@@ -19,10 +19,19 @@ The "zoo" isn't just branding. It's a design philosophy:
 - **Agents are characters**, not settings pages. They have visual presence, personality, and (eventually) basic social behavior.
 - **The enclosure is your workspace.** Agents wander, idle, and can be observed before you interact with them.
 - **Interaction is playful.** Clicking an agent opens their "character sheet" (Agent View), not a modal form.
+- **State reflection:** Agent animations reflect real status — working in IDE, idle, thinking. Not purely random wandering; the visual state has meaning.
 
 The zoo window is intentionally more interactive than a typical dashboard. Agents walk around, have unique appearances generated from their names, and exist as entities you cultivate rather than configurations you edit.
 
-**Future direction:** Basic agent interaction — imagine two agents (from different chats) being able to "talk" to each other, sharing context or handing off tasks.
+### Agent Interaction (Core Planned Feature)
+
+Agent interaction is a **core planned feature**, not just a nice-to-have. The primary use case is **task handoff between agents** — imagine finishing a conversation with your "Architect" agent and handing the implementation plan to your "Builder" agent, with full context preserved.
+
+Future expansion includes:
+- **Parallel consultation:** Ask multiple specialized agents about the same problem
+- **Specialized delegation:** An agent recognizing it needs help and pulling in another agent's expertise
+
+This is both **functional** (real context sharing via shared Brain entries and conversation summaries) and **aesthetic** (visual interaction in the zoo — agents approaching each other, exchanging context).
 
 ---
 
@@ -37,6 +46,10 @@ The Brain is an agent's **persistent memory**. It allows agents to retain contex
 - **What it stores:** Summaries of past work, project context, key decisions, ongoing tasks.
 - **How it works:** When you start a new chat, the agent's Brain is injected as context, so it "remembers" what it was working on.
 - **Why it matters:** No more re-explaining your codebase or project goals. The agent picks up where you left off.
+
+**Key insight: Automatic extraction, not manual curation.** Memory gets populated automatically from conversations — the IDE agent extracts important context (decisions made, lessons learned, project state) and writes it back to AgentZoo via MCP tools. Users can view and prune memories, but the primary flow is automated.
+
+**MCP write-back mechanism:** The IDE sends summaries to AgentZoo via MCP tools (e.g., `add_memory`, `update_brain`). This creates bidirectional data flow — the webapp writes agent configuration, and the IDE writes runtime context back.
 
 _Status: Planned. Currently no-op in the UI._
 
@@ -57,7 +70,13 @@ Skills are **injectable capabilities** that direct agent behavior. Think of it a
 - **What it stores:** A tree of skills organized by category, each with a name, description, and enabled/disabled state.
 - **How it works:** Skills are prompt fragments or directives that get injected when enabled. The agent doesn't have to "reason" into using a skill — it's told to use it.
 - **Project portability:** You can create a skill tree in AgentZoo, then add those skills to any new project. Skills travel with your workflow.
-- **Future direction:** Skills that interact with MCP servers and tools (e.g., "Enable the GitHub skill" actually connects to a GitHub MCP server). Not MVP.
+
+**Evolution path:** Skills have a clear progression from simple to powerful:
+
+1. **Prompt fragments (current):** Skills are text directives injected into context (e.g., "Always use TypeScript strict mode")
+2. **MCP tool connections (future):** Skills connect to actual MCP servers and tools (e.g., "Enable the GitHub skill" connects to a GitHub MCP server, giving the agent real GitHub API access)
+
+Example: A "GitHub" skill might start as a prompt fragment ("You have access to GitHub. Use the gh CLI for operations.") and evolve into an actual MCP server connection that exposes GitHub tools directly to the agent.
 
 _Status: Implemented. Skill tree UI with toggles, categories, and persistence._
 
@@ -71,13 +90,20 @@ AgentZoo is not a standalone chat app. It's a **configuration hub** that your ID
 ┌─────────────────┐         ┌──────────────────────────────────┐         ┌─────────────────┐
 │   AgentZoo      │  write  │   Shared store                   │  read   │   Cursor / IDE  │
 │   Webapp        │ ──────► │   (agents.json)                  │ ◄────── │   Agent         │
-│   (browser)     │         │                                  │         │   (MCP client)  │
+│   (browser)     │  config │                                  │  config │   (MCP client)  │
 └─────────────────┘         └──────────────────────────────────┘         └─────────────────┘
+                                       ▲                                          │
+                                       │              write                       │
+                                       │              brain/memory                │
+                                       └──────────────────────────────────────────┘
+                                                    (via MCP tools)
 ```
 
-- **Webapp writes:** You customize agents in the cozy UI — set their personality, toggle skills, (eventually) curate their Brain.
+**Bidirectional data flow:**
+- **Webapp writes config:** You customize agents in the cozy UI — set their personality, toggle skills, view their Brain.
 - **Store persists:** A JSON file (or future database) holds all agent configurations.
-- **IDE reads:** Your IDE (Cursor, VS Code, etc.) connects to AgentZoo via MCP and reads the current agent's config. It injects the personality, skills, and brain context into the chat.
+- **IDE reads config:** Your IDE (Cursor, VS Code, etc.) connects to AgentZoo via MCP and reads the current agent's config. It injects the personality, skills, and brain context into the chat.
+- **IDE writes memory:** During conversations, the IDE extracts important context and writes it back to the agent's Brain via MCP tools. This is how agents "learn" from your work sessions.
 
 The result: **What you configure in the zoo shows up in your code editor.**
 
@@ -91,9 +117,15 @@ AgentZoo is a **personal productivity tool** for:
 - **Learners exploring agentic programming** — A hands-on way to understand how prompts, skills, and context shape agent behavior.
 - **Power users who want consistency** — If you're tired of re-prompting every new chat, AgentZoo gives you persistent, reusable agent configurations.
 
-This is **not** an enterprise tool. It's a personal utility — opinionated, focused, and designed for individual developers rather than teams or organizations.
+This is **not** an enterprise tool (yet). It's a personal utility — opinionated, focused, and designed for individual developers rather than teams or organizations.
 
-**Distribution:** Eventually available online. Open source status undecided.
+**Distribution model:**
+
+- **Hosted service:** AgentZoo will be available as a hosted service where users get isolated "zoos" (their own agent collections, completely separate from other users).
+- **Full authentication:** User accounts with proper security — no shared or public access to your agents.
+- **Architecture:** Personal-first, team-ready later. The current architecture is designed for single-user simplicity, but the hosted model will naturally support scaling to team collaboration in the future.
+
+Open source status undecided.
 
 ---
 

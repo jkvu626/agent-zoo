@@ -82,6 +82,7 @@ export function AgentView() {
             tooltip="Brain"
             icon={<span className="text-sm font-semibold text-white">B</span>}
             className="bg-[#FF6B6C] text-white hover:bg-[#E85E5F]"
+            onClick={() => navigate(`/agent/${agent.id}/brain`)}
             {...buttonHoverBounce}
           />
         </div>

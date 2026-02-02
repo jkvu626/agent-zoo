@@ -1,6 +1,12 @@
 # 03 — MCP tool implementation spec
 
-**Scope:** Add MCP tools so IDE agents (e.g. Cursor) can **inject** customized agents into fresh chats. Users build agents in the webapp (personality + skills), then use MCP tools to apply that agent configuration to their current IDE session.
+> **STATUS: COMPLETE**
+>
+> All 4 MCP tools are implemented and functional (`agent_zoo_inject`, `agent_zoo_list_agents`, `agent_zoo_set_current`, `agent_zoo_get_agent`).
+>
+> _Note: This spec originally used `systemPrompt` but the implementation uses `systemPrompt`. Spec updated to match._
+
+**Scope:** Add MCP tools so IDE agents (e.g. Cursor) can **inject** customized agents into fresh chats. Users build agents in the webapp (systemPrompt + skills), then use MCP tools to apply that agent configuration to their current IDE session.
 
 **References:** `research/next-steps.md`, `packages/server/src/mcp.ts`, MCP protocol docs, `@agent-zoo/types`.
 
@@ -10,7 +16,7 @@
 
 AgentZoo is an **agent customizer**. The workflow:
 
-1. **Webapp**: User creates/customizes agents — writes a system prompt (`personality`), enables/disables skills, organizes skill categories.
+1. **Webapp**: User creates/customizes agents — writes a system prompt (`systemPrompt`), enables/disables skills, organizes skill categories.
 2. **IDE**: User starts a fresh chat and "injects" the agent — the MCP tool returns the compiled system prompt and skill configuration.
 3. **Chat**: The IDE uses the injected config to shape the agent's behavior for that session.
 
@@ -22,9 +28,9 @@ The primary MCP use case is **reading** the compiled agent configuration for inj
 
 When a user "injects" an agent, the IDE receives:
 
-1. **System prompt** — The agent's `personality` field (the core instruction set).
+1. **System prompt** — The agent's `systemPrompt` field (the core instruction set).
 2. **Enabled skills** — List of skills the agent has turned on, with their descriptions.
-3. **Compiled prompt** (optional convenience) — A single string combining personality + skill instructions, ready to paste or use as a system message.
+3. **Compiled prompt** (optional convenience) — A single string combining systemPrompt + skill instructions, ready to paste or use as a system message.
 
 ### Skill → Prompt Mapping
 
@@ -38,7 +44,7 @@ When compiling the prompt:
 
 ```
 [Agent Personality]
-{agent.personality}
+{agent.systemPrompt}
 
 [Active Skills]
 - {skill.name}: {skill.description}
@@ -82,7 +88,7 @@ Returns the compiled system prompt for the current (or specified) agent, ready f
     "format": {
       "type": "string",
       "enum": ["compiled", "structured"],
-      "description": "Output format. 'compiled' = single string prompt. 'structured' = JSON with personality + skills separate. Defaults to 'compiled'."
+      "description": "Output format. 'compiled' = single string prompt. 'structured' = JSON with systemPrompt + skills separate. Defaults to 'compiled'."
     }
   },
   "required": []
@@ -105,7 +111,7 @@ Returns the compiled system prompt for the current (or specified) agent, ready f
 {
   "agentId": "agent-1",
   "agentName": "Code Wizard",
-  "personality": "You are a concise coding assistant...",
+  "systemPrompt": "You are a concise coding assistant...",
   "skills": [
     {
       "id": "ts-expert",
@@ -242,7 +248,7 @@ IDE:  → calls agent_zoo_list_agents()
 ```
 User: "What skills does my current agent have?"
 IDE:  → calls agent_zoo_inject({ format: "structured" })
-      ← receives personality + skills list
+      ← receives systemPrompt + skills list
       → displays to user
 ```
 
@@ -253,7 +259,7 @@ IDE:  → calls agent_zoo_inject({ format: "structured" })
 The `agent_zoo_inject` tool (with `format: "compiled"`) produces a single string. Recommended structure:
 
 ```
-{personality}
+{systemPrompt}
 
 ---
 
@@ -270,7 +276,7 @@ The `agent_zoo_inject` tool (with `format: "compiled"`) produces a single string
 
 If no skills are enabled, omit the "Active Skills" section entirely.
 
-If the personality is empty, start with the skills section (or return an error/warning).
+If the systemPrompt is empty, start with the skills section (or return an error/warning).
 
 ---
 
@@ -331,4 +337,4 @@ These are **not** in scope but may inform design:
 - [ ] `agent_zoo_set_current` updates current agent and confirms.
 - [ ] `agent_zoo_get_agent` returns full agent config.
 - [ ] All tools handle missing/invalid agent gracefully with error responses.
-- [ ] Compiled prompt correctly combines personality + enabled skills only.
+- [ ] Compiled prompt correctly combines systemPrompt + enabled skills only.
