@@ -85,6 +85,7 @@ export function SkillsTree({
   const [sidebarState, setSidebarState] = useState<SidebarState>({
     mode: "empty",
   });
+  const [hoveredSkillId, setHoveredSkillId] = useState<string | null>(null);
   const [createCategoryDefaults, setCreateCategoryDefaults] = useState(() => ({
     name: "",
     color: pickCategoryColor([]),
@@ -231,6 +232,7 @@ export function SkillsTree({
       : null;
   const selectedSkillId =
     sidebarState.mode === "edit-skill" ? sidebarState.skillId : null;
+  const hoveredSkill = hoveredSkillId ? skillMap.get(hoveredSkillId) : null;
 
   return (
     <div className="skills-tree rounded-panel border border-border bg-bg-panel p-panel flex min-h-0 h-full flex-col">
@@ -358,6 +360,8 @@ export function SkillsTree({
                                     skillId: skill.id,
                                   })
                                 }
+                                onMouseEnter={() => setHoveredSkillId(skill.id)}
+                                onMouseLeave={() => setHoveredSkillId(null)}
                               >
                                 <span className="skills-skill-title">
                                   {skill.name}
@@ -417,6 +421,23 @@ export function SkillsTree({
                 Select a category to add a skill.
               </p>
             )
+          ) : sidebarState.mode === "empty" && hoveredSkill ? (
+            <div className="flex h-full flex-col gap-4">
+              <div>
+                <h3 className="font-display text-base text-text-primary">
+                  {hoveredSkill.name}
+                </h3>
+                <p className="text-xs text-text-muted">
+                  {hoveredSkill.enabled ? "Enabled" : "Disabled"} · Read-only
+                  preview
+                </p>
+              </div>
+              <div className="flex-1">
+                <p className="text-sm text-text-secondary whitespace-pre-wrap">
+                  {hoveredSkill.description || "No description yet."}
+                </p>
+              </div>
+            </div>
           ) : sidebarState.mode === "view-skill" ? (
             skillMap.get(sidebarState.skillId) ? (
               <div className="flex h-full flex-col gap-4">

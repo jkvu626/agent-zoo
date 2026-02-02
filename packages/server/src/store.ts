@@ -181,12 +181,17 @@ export class JsonFileStore implements AgentStore {
     const requestedId = input.id?.trim();
     const appearanceSeed =
       input.appearanceSeed?.trim() || requestedId || input.name;
+    const skillCategories =
+      input.skillCategories && input.skillCategories.length > 0
+        ? input.skillCategories
+        : [{ ...DEFAULT_CATEGORY }];
+    const skills = input.skills ?? [];
 
     const agent: Agent = {
       ...input,
       id: requestedId ? ensureUniqueId(requestedId) : randomUUID(),
-      skillCategories: input.skillCategories ?? [],
-      skills: input.skills ?? [],
+      skillCategories,
+      skills,
       contextRefs: input.contextRefs ?? [],
       appearanceSeed,
     };

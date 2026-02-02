@@ -12,6 +12,12 @@ type AgentCreatorProps = {
   onCancel: () => void;
 };
 
+const DEFAULT_CATEGORY = {
+  id: "general",
+  name: "General",
+  color: "#61988E",
+};
+
 function createAgentId(name: string) {
   return name.trim().toLowerCase().replace(/\s+/g, "-");
 }
@@ -23,7 +29,7 @@ function getPreviewAgent(name: string): Agent {
     name: name.trim() || "New Agent",
     description: "",
     systemPrompt: "",
-    skillCategories: [],
+    skillCategories: [{ ...DEFAULT_CATEGORY }],
     skills: [],
     contextRefs: [],
     appearanceSeed: id,
@@ -46,7 +52,7 @@ export function AgentCreator({ onCancel }: AgentCreatorProps) {
         name: trimmed,
         description: "",
         systemPrompt: "",
-        skillCategories: [],
+        skillCategories: [{ ...DEFAULT_CATEGORY }],
         skills: [],
         contextRefs: [],
         appearanceSeed: id,
