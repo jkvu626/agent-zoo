@@ -2,11 +2,27 @@
  * Shared types for AgentZoo (webapp + server).
  */
 
+export interface SkillCategory {
+  id: string;
+  name: string;
+  color: string;
+}
+
+export interface Skill {
+  id: string;
+  name: string;
+  description: string;
+  categoryId: string;
+  enabled: boolean;
+}
+
 export interface Agent {
   id: string;
   name: string;
-  personality: string;
-  skills: Record<string, boolean>;
+  description: string;
+  systemPrompt: string;
+  skillCategories: SkillCategory[];
+  skills: Skill[];
   contextRefs: string[];
   appearanceSeed?: string;
 }

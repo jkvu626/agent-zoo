@@ -22,27 +22,39 @@ export function RightSidebar({ isOpen, agentId }: RightSidebarProps) {
     refetch,
   } = useAgent(agentId ?? undefined);
   const updateAgent = useUpdateAgent();
-  const [draftPrompt, setDraftPrompt] = useState("");
+  const [draftDescription, setDraftDescription] = useState("");
+  const [draftSystemPrompt, setDraftSystemPrompt] = useState("");
   const [hasSubmitted, setHasSubmitted] = useState(false);
 
   useEffect(() => {
-    setDraftPrompt(agent?.personality ?? "");
+    setDraftDescription(agent?.description ?? "");
+    setDraftSystemPrompt(agent?.systemPrompt ?? "");
     setHasSubmitted(false);
-  }, [agent?.id, agent?.personality, isOpen]);
+  }, [agent?.id, agent?.description, agent?.systemPrompt, isOpen]);
 
   if (!isOpen) {
     return null;
   }
 
-  const currentPrompt = agent?.personality ?? "";
-  const isDirty = Boolean(agent) && draftPrompt !== currentPrompt;
+  const currentDescription = agent?.description ?? "";
+  const currentSystemPrompt = agent?.systemPrompt ?? "";
+  const isDirty =
+    Boolean(agent) &&
+    (draftDescription !== currentDescription ||
+      draftSystemPrompt !== currentSystemPrompt);
   const canSubmit = Boolean(agent) && isDirty && !updateAgent.isPending;
   const handleSubmit = () => {
     if (!agentId) {
       return;
     }
     updateAgent.mutate(
-      { id: agentId, updates: { personality: draftPrompt } },
+      {
+        id: agentId,
+        updates: {
+          description: draftDescription,
+          systemPrompt: draftSystemPrompt,
+        },
+      },
       {
         onSuccess: () => setHasSubmitted(true),
         onError: () => setHasSubmitted(false),
@@ -54,7 +66,7 @@ export function RightSidebar({ isOpen, agentId }: RightSidebarProps) {
     : updateAgent.isError
       ? "Save failed. Try again."
       : hasSubmitted && !isDirty
-        ? "Prompt saved."
+        ? "Saved."
         : "";
 
   return (
@@ -67,10 +79,10 @@ export function RightSidebar({ isOpen, agentId }: RightSidebarProps) {
         <div className="border-b border-border px-panel py-3">
           <h2 className="font-display text-lg text-text-primary">Soul</h2>
           <p className="text-xs text-text-muted">
-            Shape the agent personality prompt.
+            Define how this agent presents itself.
           </p>
         </div>
-        <div className="flex min-h-0 flex-1 flex-col px-panel py-4">
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-panel py-4">
           {!agentId ? (
             <EmptyState
               title="Select an agent"
@@ -90,9 +102,14 @@ export function RightSidebar({ isOpen, agentId }: RightSidebarProps) {
             />
           ) : (
             <SoulEditor
-              value={draftPrompt}
-              onChange={(value) => {
-                setDraftPrompt(value);
+              description={draftDescription}
+              systemPrompt={draftSystemPrompt}
+              onDescriptionChange={(value) => {
+                setDraftDescription(value);
+                setHasSubmitted(false);
+              }}
+              onSystemPromptChange={(value) => {
+                setDraftSystemPrompt(value);
                 setHasSubmitted(false);
               }}
               disabled={updateAgent.isPending}

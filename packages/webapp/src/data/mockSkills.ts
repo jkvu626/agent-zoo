@@ -1,3 +1,8 @@
+import type {
+  Skill as AgentSkill,
+  SkillCategory as AgentSkillCategory,
+} from "@agent-zoo/types";
+
 export type SkillCategory =
   | "communication"
   | "analysis"
@@ -20,6 +25,14 @@ export const categoryLabels: Record<SkillCategory, string> = {
   execution: "Execution",
   creativity: "Creativity",
   communication: "Communication",
+};
+
+const categoryColors: Record<SkillCategory, string> = {
+  leadership: "#5B5F97",
+  analysis: "#61988E",
+  execution: "#FF6B6C",
+  creativity: "#E8C44A",
+  communication: "#7BA35C",
 };
 
 export const skillCatalog: Skill[] = [
@@ -178,3 +191,19 @@ export const skillCatalog: Skill[] = [
     requires: ["clarity-writing", "calm-guidance"],
   },
 ];
+
+export const seedSkillCategories: AgentSkillCategory[] = Object.entries(
+  categoryLabels,
+).map(([id, name]) => ({
+  id,
+  name,
+  color: categoryColors[id as SkillCategory] ?? "#5B5F97",
+}));
+
+export const seedSkills: AgentSkill[] = skillCatalog.map((skill) => ({
+  id: skill.id,
+  name: skill.name,
+  description: skill.description,
+  categoryId: skill.category,
+  enabled: false,
+}));

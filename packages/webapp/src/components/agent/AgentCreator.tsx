@@ -21,8 +21,10 @@ function getPreviewAgent(name: string): Agent {
   return {
     id,
     name: name.trim() || "New Agent",
-    personality: "",
-    skills: {},
+    description: "",
+    systemPrompt: "",
+    skillCategories: [],
+    skills: [],
     contextRefs: [],
     appearanceSeed: id,
   };
@@ -42,8 +44,10 @@ export function AgentCreator({ onCancel }: AgentCreatorProps) {
       await createAgent.mutateAsync({
         id,
         name: trimmed,
-        personality: "",
-        skills: {},
+        description: "",
+        systemPrompt: "",
+        skillCategories: [],
+        skills: [],
         contextRefs: [],
         appearanceSeed: id,
       });

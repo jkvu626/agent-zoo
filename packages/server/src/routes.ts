@@ -38,8 +38,10 @@ export async function registerRoutes(
       const agent = await store.create({
         id: body.id,
         name: body.name ?? "Unnamed",
-        personality: body.personality ?? "",
-        skills: body.skills ?? {},
+        description: body.description ?? "",
+        systemPrompt: body.systemPrompt ?? "",
+        skillCategories: body.skillCategories ?? [],
+        skills: body.skills ?? [],
         contextRefs: body.contextRefs ?? [],
         appearanceSeed: body.appearanceSeed,
       });

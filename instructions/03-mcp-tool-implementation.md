@@ -1,92 +1,334 @@
 # 03 — MCP tool implementation spec
 
-**Scope:** Add MCP tools so IDE agents (e.g. Cursor) can set the current agent, update personality, and toggle skills. Register tool schemas and implement handlers in the MCP server.
+**Scope:** Add MCP tools so IDE agents (e.g. Cursor) can **inject** customized agents into fresh chats. Users build agents in the webapp (personality + skills), then use MCP tools to apply that agent configuration to their current IDE session.
 
 **References:** `research/next-steps.md`, `packages/server/src/mcp.ts`, MCP protocol docs, `@agent-zoo/types`.
 
 ---
 
-## 1. Goals
+## 1. Vision: Agent Injection
 
-- Extend the MCP server from read-only resources to **tools** (write operations).
-- Enable the IDE to: set current agent, update agent personality, toggle a skill for an agent.
-- Register tool names and input schemas so the IDE can discover and call them.
-- Keep behavior consistent with the existing JSON store and API.
+AgentZoo is an **agent customizer**. The workflow:
 
----
+1. **Webapp**: User creates/customizes agents — writes a system prompt (`personality`), enables/disables skills, organizes skill categories.
+2. **IDE**: User starts a fresh chat and "injects" the agent — the MCP tool returns the compiled system prompt and skill configuration.
+3. **Chat**: The IDE uses the injected config to shape the agent's behavior for that session.
 
-## 2. Current MCP limitations
-
-The server currently exposes only **resources** (read-only):
-
-- `agent-zoo://agents` — list all agents
-- `agent-zoo://agents/current` — get current agent config
-- `agent-zoo://agents/{id}` — get specific agent
-
-**Gap:** IDE cannot switch current agent, update personality, or toggle skills via MCP.
+The primary MCP use case is **reading** the compiled agent configuration for injection, not editing agents from the IDE (editing happens in the webapp).
 
 ---
 
-## 3. Required MCP tools
+## 2. How Injection Works
 
-Implement in `packages/server/src/mcp.ts` (or equivalent MCP entrypoint).
+When a user "injects" an agent, the IDE receives:
 
-### 3.1 List tools (schema registration)
+1. **System prompt** — The agent's `personality` field (the core instruction set).
+2. **Enabled skills** — List of skills the agent has turned on, with their descriptions.
+3. **Compiled prompt** (optional convenience) — A single string combining personality + skill instructions, ready to paste or use as a system message.
 
-Respond to the MCP **ListTools** request with:
+### Skill → Prompt Mapping
 
-| Tool name                      | Description                                 | Required arguments                                          |
-| ------------------------------ | ------------------------------------------- | ----------------------------------------------------------- |
-| `agent_zoo_set_current`        | Set the current active agent                | `agentId` (string)                                          |
-| `agent_zoo_update_personality` | Update an agent's system prompt/personality | `agentId` (string), `personality` (string)                  |
-| `agent_zoo_toggle_skill`       | Enable or disable a skill for an agent      | `agentId` (string), `skillId` (string), `enabled` (boolean) |
+Each `Skill` has:
 
-Input schemas must be valid JSON Schema (e.g. `type: 'object'`, `properties`, `required`).
+- `name` — Display name (e.g. "TypeScript Expert")
+- `description` — The actual instruction/capability text (e.g. "You are an expert in TypeScript. Prefer strict types, use interfaces over type aliases...")
+- `enabled` — Whether this skill is active
 
-### 3.2 Tool handlers (CallTool)
+When compiling the prompt:
 
-- **`agent_zoo_set_current`**
-  - Arguments: `agentId`.
-  - Call store `setCurrentId(agentId)`.
-  - Return a short text confirmation (e.g. "Current agent set to …").
+```
+[Agent Personality]
+{agent.personality}
 
-- **`agent_zoo_update_personality`**
-  - Arguments: `agentId`, `personality`.
-  - Call store `update(agentId, { personality })`.
-  - Return a short text confirmation.
+[Active Skills]
+- {skill.name}: {skill.description}
+- {skill.name}: {skill.description}
+...
+```
 
-- **`agent_zoo_toggle_skill`**
-  - Arguments: `agentId`, `skillId`, `enabled`.
-  - Get agent, merge `skills: { ...agent.skills, [skillId]: enabled }`, call store `update(agentId, { skills })`.
-  - Return a short text confirmation (e.g. "Skill … enabled/disabled").
-  - If agent not found, return or throw an appropriate error.
-
-Use the same store instance as the rest of the server (e.g. JSON file store). Errors (e.g. agent not found) must be reported in the tool result or via MCP error handling, not silently ignored.
+The skill `description` field is the injectable prompt fragment. Skills with `enabled: false` are excluded.
 
 ---
 
-## 4. Implementation notes
+## 3. Required MCP Tools
 
-- Use the existing MCP request handlers: `ListToolsRequestSchema` (or equivalent) for listing, `CallToolRequestSchema` for execution.
-- Tool names should be stable; prefer snake*case and a prefix (e.g. `agent_zoo*`) to avoid clashes.
-- No new backend routes are required; tools call into the same store used by the HTTP API.
+Implement in `packages/server/src/mcp.ts`.
+
+### 3.1 Tool Summary
+
+| Tool name               | Purpose                                               | Primary use                                 |
+| ----------------------- | ----------------------------------------------------- | ------------------------------------------- |
+| `agent_zoo_inject`      | Get the current agent's compiled prompt for injection | **Main tool** — called when starting a chat |
+| `agent_zoo_list_agents` | List available agents (id, name)                      | Discover agents to switch to                |
+| `agent_zoo_set_current` | Set which agent is active                             | Switch agents without leaving IDE           |
+| `agent_zoo_get_agent`   | Get full agent config (not compiled)                  | Inspect raw agent data                      |
+
+### 3.2 Tool Schemas & Handlers
+
+#### `agent_zoo_inject` (Primary Tool)
+
+Returns the compiled system prompt for the current (or specified) agent, ready for injection.
+
+**Input schema:**
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "agentId": {
+      "type": "string",
+      "description": "Optional. Agent ID to inject. Defaults to current agent."
+    },
+    "format": {
+      "type": "string",
+      "enum": ["compiled", "structured"],
+      "description": "Output format. 'compiled' = single string prompt. 'structured' = JSON with personality + skills separate. Defaults to 'compiled'."
+    }
+  },
+  "required": []
+}
+```
+
+**Response (format: "compiled"):**
+
+```json
+{
+  "agentId": "agent-1",
+  "agentName": "Code Wizard",
+  "prompt": "You are a concise coding assistant...\n\n[Active Skills]\n- TypeScript Expert: Prefer strict types..."
+}
+```
+
+**Response (format: "structured"):**
+
+```json
+{
+  "agentId": "agent-1",
+  "agentName": "Code Wizard",
+  "personality": "You are a concise coding assistant...",
+  "skills": [
+    {
+      "id": "ts-expert",
+      "name": "TypeScript Expert",
+      "description": "Prefer strict types..."
+    },
+    {
+      "id": "test-driven",
+      "name": "Test-Driven",
+      "description": "Write tests first..."
+    }
+  ]
+}
+```
+
+**Handler logic:**
+
+1. Resolve agent (use `agentId` param or fall back to `currentAgentId`).
+2. If no agent found, return error.
+3. Filter skills to only `enabled: true`.
+4. If `format === "compiled"`: build the combined prompt string.
+5. Return the response.
 
 ---
 
-## 5. Out of scope (for this spec)
+#### `agent_zoo_list_agents`
 
-- New MCP resources (read-only resources remain as-is).
-- Backend input validation (see backend-hardening spec).
-- Real-time sync or WebSocket.
-- Cursor-specific UI or configuration (only MCP contract is specified).
+Lists all available agents for selection.
+
+**Input schema:**
+
+```json
+{
+  "type": "object",
+  "properties": {},
+  "required": []
+}
+```
+
+**Response:**
+
+```json
+{
+  "agents": [
+    { "id": "agent-1", "name": "Code Wizard", "isCurrent": true },
+    { "id": "agent-2", "name": "Documentation Pro", "isCurrent": false }
+  ]
+}
+```
 
 ---
 
-## 6. Checklist
+#### `agent_zoo_set_current`
 
-- [ ] ListTools returns the three tools with correct names and input schemas.
-- [ ] `agent_zoo_set_current` updates current agent and returns confirmation.
-- [ ] `agent_zoo_update_personality` updates agent personality and returns confirmation.
-- [ ] `agent_zoo_toggle_skill` updates agent skills and returns confirmation.
-- [ ] Missing or invalid arguments handled with clear error messages.
-- [ ] Agent-not-found (and similar) cases handled and reported to the IDE.
+Sets the active agent (so subsequent `agent_zoo_inject` calls use it).
+
+**Input schema:**
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "agentId": {
+      "type": "string",
+      "description": "The agent ID to set as current."
+    }
+  },
+  "required": ["agentId"]
+}
+```
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "message": "Current agent set to 'Code Wizard'",
+  "agentId": "agent-1"
+}
+```
+
+**Handler:** Call `store.setCurrentId(agentId)`. Verify agent exists first.
+
+---
+
+#### `agent_zoo_get_agent`
+
+Returns the full raw agent configuration (for inspection, not injection).
+
+**Input schema:**
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "agentId": {
+      "type": "string",
+      "description": "Optional. Agent ID to retrieve. Defaults to current agent."
+    }
+  },
+  "required": []
+}
+```
+
+**Response:** Full `Agent` object as JSON.
+
+---
+
+## 4. Typical IDE Workflows
+
+### Workflow A: Inject current agent into fresh chat
+
+```
+User: [starts new chat, wants to use their customized agent]
+IDE:  → calls agent_zoo_inject()
+      ← receives compiled prompt
+      → uses prompt as system message or context
+```
+
+### Workflow B: Switch agent mid-session
+
+```
+User: "Switch to my Documentation Pro agent"
+IDE:  → calls agent_zoo_list_agents()
+      ← sees available agents
+      → calls agent_zoo_set_current({ agentId: "agent-2" })
+      ← confirmation
+      → calls agent_zoo_inject()
+      ← receives new prompt
+```
+
+### Workflow C: Inspect agent before using
+
+```
+User: "What skills does my current agent have?"
+IDE:  → calls agent_zoo_inject({ format: "structured" })
+      ← receives personality + skills list
+      → displays to user
+```
+
+---
+
+## 5. Compiled Prompt Format
+
+The `agent_zoo_inject` tool (with `format: "compiled"`) produces a single string. Recommended structure:
+
+```
+{personality}
+
+---
+
+## Active Skills
+
+### {skill.name}
+{skill.description}
+
+### {skill.name}
+{skill.description}
+
+...
+```
+
+If no skills are enabled, omit the "Active Skills" section entirely.
+
+If the personality is empty, start with the skills section (or return an error/warning).
+
+---
+
+## 6. Implementation Notes
+
+- Import `ListToolsRequestSchema` and `CallToolRequestSchema` from MCP SDK.
+- Add `tools: {}` to server capabilities.
+- Tool names use `agent_zoo_` prefix (snake_case) to avoid collisions.
+- All tools use the same store instance as HTTP routes.
+- Return errors as structured responses, not thrown exceptions (MCP tools should gracefully report issues).
+
+### Error Responses
+
+```json
+{
+  "error": true,
+  "code": "AGENT_NOT_FOUND",
+  "message": "Agent with ID 'xyz' not found."
+}
+```
+
+Common error codes:
+
+- `AGENT_NOT_FOUND` — Requested agent doesn't exist
+- `NO_CURRENT_AGENT` — No current agent set and none specified
+- `INVALID_FORMAT` — Unknown format parameter value
+
+---
+
+## 7. Out of Scope
+
+- **Agent editing from IDE** — Users edit agents in the webapp. The IDE is for injection/consumption.
+- Backend input validation (see `04-backend-hardening.md`).
+- Real-time sync / WebSocket push.
+- Cursor-specific UI or keybindings.
+- Skill creation/deletion via MCP (webapp only).
+
+---
+
+## 8. Future Considerations
+
+These are **not** in scope but may inform design:
+
+- **Context refs injection** — `contextRefs` field could include file paths or URLs to attach to the chat.
+- **Skill dependencies** — Skills that require other skills to be enabled.
+- **Agent templates** — Pre-built agents users can clone and customize.
+- **Per-workspace agents** — Different current agent per project/workspace.
+
+---
+
+## 9. Checklist
+
+- [ ] `ListTools` returns all four tools with correct schemas.
+- [ ] `agent_zoo_inject` returns compiled prompt for current agent.
+- [ ] `agent_zoo_inject` supports `agentId` param to inject specific agent.
+- [ ] `agent_zoo_inject` supports `format: "structured"` for raw data.
+- [ ] `agent_zoo_list_agents` returns all agents with `isCurrent` flag.
+- [ ] `agent_zoo_set_current` updates current agent and confirms.
+- [ ] `agent_zoo_get_agent` returns full agent config.
+- [ ] All tools handle missing/invalid agent gracefully with error responses.
+- [ ] Compiled prompt correctly combines personality + enabled skills only.

@@ -19,6 +19,67 @@ const defaultStore: StoreShape = {
   currentAgentId: null,
 };
 
+const DEFAULT_CATEGORY = {
+  id: "general",
+  name: "General",
+  color: "#61988E",
+};
+
+const toTitleCase = (value: string) =>
+  value.replace(/[-_]+/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
+
+const migrateAgent = (agent: Agent): { agent: Agent; didChange: boolean } => {
+  const hasSkillArray = Array.isArray(agent.skills);
+  const hasCategoryArray = Array.isArray(agent.skillCategories);
+
+  if (hasSkillArray && hasCategoryArray) {
+    return {
+      agent: {
+        ...agent,
+        contextRefs: agent.contextRefs ?? [],
+      },
+      didChange: false,
+    };
+  }
+
+  const legacySkills =
+    !hasSkillArray && typeof agent.skills === "object" && agent.skills
+      ? (agent.skills as Record<string, boolean>)
+      : {};
+
+  const skillCategories =
+    hasCategoryArray && agent.skillCategories.length > 0
+      ? agent.skillCategories
+      : [DEFAULT_CATEGORY];
+
+  const skills = hasSkillArray
+    ? agent.skills
+    : Object.entries(legacySkills).map(([id, enabled]) => ({
+        id,
+        name: toTitleCase(id),
+        description: "",
+        categoryId: skillCategories[0]?.id ?? DEFAULT_CATEGORY.id,
+        enabled: Boolean(enabled),
+      }));
+
+  const categoryIds = new Set(skillCategories.map((category) => category.id));
+  const normalizedSkills = skills.map((skill) =>
+    categoryIds.has(skill.categoryId)
+      ? skill
+      : { ...skill, categoryId: skillCategories[0]?.id ?? DEFAULT_CATEGORY.id },
+  );
+
+  return {
+    agent: {
+      ...agent,
+      skillCategories,
+      skills: normalizedSkills,
+      contextRefs: agent.contextRefs ?? [],
+    },
+    didChange: true,
+  };
+};
+
 export class JsonFileStore implements AgentStore {
   private path: string;
   private cache: StoreShape | null = null;
@@ -33,7 +94,23 @@ export class JsonFileStore implements AgentStore {
     const { dirname } = await import("node:path");
     try {
       const raw = await readFile(this.path, "utf-8");
-      this.cache = JSON.parse(raw) as StoreShape;
+      const parsed = JSON.parse(raw) as StoreShape;
+      let didChange = false;
+      const migratedAgents = parsed.agents.map((agent) => {
+        const result = migrateAgent(agent);
+        if (result.didChange) {
+          didChange = true;
+        }
+        return result.agent;
+      });
+      const nextStore = {
+        ...parsed,
+        agents: migratedAgents,
+      };
+      if (didChange) {
+        await writeFile(this.path, JSON.stringify(nextStore, null, 2), "utf-8");
+      }
+      this.cache = nextStore;
       return this.cache!;
     } catch (err: unknown) {
       if ((err as NodeJS.ErrnoException).code === "ENOENT") {
@@ -108,7 +185,8 @@ export class JsonFileStore implements AgentStore {
     const agent: Agent = {
       ...input,
       id: requestedId ? ensureUniqueId(requestedId) : randomUUID(),
-      skills: input.skills ?? {},
+      skillCategories: input.skillCategories ?? [],
+      skills: input.skills ?? [],
       contextRefs: input.contextRefs ?? [],
       appearanceSeed,
     };

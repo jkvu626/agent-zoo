@@ -60,7 +60,7 @@ export function AgentView() {
     >
       <div className="text-center pb-6">
         <h2 className="font-display text-xl text-text-primary">{agent.name}</h2>
-        <p className="mt-1.5 text-sm text-text-muted">{agent.personality}</p>
+        <p className="mt-1.5 text-sm text-text-muted">{agent.description}</p>
       </div>
       <div className="relative flex h-80 w-80 items-center justify-center">
         <motion.div

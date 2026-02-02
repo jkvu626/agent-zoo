@@ -55,3 +55,14 @@ To use AgentZoo as an MCP server in Cursor, add to `.cursor/mcp.json` or Cursor 
 ```
 
 On macOS/Linux use `$HOME/.agent-zoo/agents.json` for `AGENT_ZOO_STORE_PATH`.
+
+### Inject an agent via slash prompt
+
+Once the MCP server is running, open a new chat in Cursor and type `/` to see MCP prompts.
+Select one of the AgentZoo prompts:
+
+- **Use Current Agent** — injects the currently selected agent
+- **Use Agent: {name}** — injects a specific agent
+
+These prompts insert a user message that tells the assistant to adopt the agent's
+persona and active skills for the conversation.
