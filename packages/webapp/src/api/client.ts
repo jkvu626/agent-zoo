@@ -65,15 +65,6 @@ export const client = {
   delete(id: string): Promise<void> {
     return request(`/agents/${id}`, { method: "DELETE" });
   },
-  getCurrent(): Promise<{ currentAgentId: string | null }> {
-    return request("/current");
-  },
-  setCurrent(id: string | null): Promise<{ currentAgentId: string | null }> {
-    return request("/current", {
-      method: "PUT",
-      body: JSON.stringify({ currentAgentId: id }),
-    });
-  },
   getBrainEntries(
     agentId: string,
     filters?: BrainEntryFilters,

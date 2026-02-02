@@ -42,18 +42,19 @@ export function BrainEntryForm({
   disabled,
   className,
 }: BrainEntryFormProps) {
+  const initialTagsInput = initialTags.join(", ");
   const [type, setType] = useState<BrainEntryType>(initialType);
   const [content, setContent] = useState(initialContent);
-  const [tagsInput, setTagsInput] = useState(initialTags.join(", "));
+  const [tagsInput, setTagsInput] = useState(initialTagsInput);
   const [pinned, setPinned] = useState(initialPinned);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   useEffect(() => {
     setType(initialType);
     setContent(initialContent);
-    setTagsInput(initialTags.join(", "));
+    setTagsInput(initialTagsInput);
     setPinned(initialPinned);
-  }, [initialType, initialContent, initialTags, initialPinned]);
+  }, [initialType, initialContent, initialTagsInput, initialPinned]);
 
   useEffect(() => {
     const textarea = textareaRef.current;

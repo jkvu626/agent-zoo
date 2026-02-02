@@ -3,11 +3,13 @@
 > **STATUS: NOT COMPLETE**
 >
 > **Implemented:**
+>
 > - Zod dependency installed (but unused)
 > - Basic error responses (ad-hoc, not centralized)
 > - Fastify logger initialized (but not wired to requests)
 >
 > **Missing:**
+>
 > - No `schemas.ts` with Zod validation schemas
 > - No `safeParse()` in routes — bodies are unvalidated
 > - No `ApiError` class or centralized error handler
@@ -46,14 +48,10 @@
 - **UpdateAgent:**
   - Same fields as CreateAgent, all optional.
 
-- **SetCurrent:**
-  - `currentAgentId`: string (UUID or non-empty ID format used by the app).
-
 **Application:**
 
 - **POST /api/agents:** Parse body with CreateAgent schema. On `safeParse` failure, respond with 400 and a structured error (e.g. `{ error: 'Invalid input', details: result.error.issues }`). On success, use validated data only.
 - **PUT /api/agents/:id:** Parse body with UpdateAgent schema. Same 400-on-failure pattern.
-- **PUT /api/current:** Parse body with SetCurrent schema. Same 400-on-failure pattern.
 
 Do not use unvalidated `req.body` for these fields after validation is in place.
 
@@ -99,8 +97,7 @@ Log format should be machine-readable (e.g. JSON) and safe for production. Do no
 
 ## 7. Checklist
 
-- [ ] CreateAgent, UpdateAgent, and SetCurrent Zod schemas defined and used in routes.
+- [ ] CreateAgent and UpdateAgent Zod schemas defined and used in routes.
 - [ ] POST /api/agents and PUT /api/agents/:id validate body and return 400 with details on failure.
-- [ ] PUT /api/current validates body and returns 400 on failure.
 - [ ] ApiError (or equivalent) and central error handler return consistent JSON error payloads.
 - [ ] Request and response logging (method, URL, status) in place and configurable via log level.

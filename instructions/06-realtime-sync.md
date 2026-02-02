@@ -3,19 +3,21 @@
 > **STATUS: NOT COMPLETE — Not implemented**
 >
 > **Current state:**
+>
 > - HTTP API is fully functional
 > - React Query polling/refetch works for updates
 >
 > **Missing (all items):**
+>
 > - No WebSocket server (`ws` library not installed)
 > - No WebSocket route/handler in server
-> - No event broadcasting for `agent:created`, `agent:updated`, `agent:deleted`, `current:changed`
+> - No event broadcasting for `agent:created`, `agent:updated`, `agent:deleted`
 > - No `useAgentSync` hook in webapp
 > - No real-time push updates
 >
 > **Alignment:** `docs/MCP-ARCHITECTURE.md` mentions WebSocket as "optional" — spec is more explicit. Spec is well-aligned with project vision.
 
-**Scope:** Add WebSocket support on the backend and a frontend hook to receive live updates. When agents or current agent change (via API or MCP), connected clients (webapp, and optionally IDE) get pushed events so they can invalidate or refresh data without polling.
+**Scope:** Add WebSocket support on the backend and a frontend hook to receive live updates. When agents change (via API or MCP), connected clients (webapp, and optionally IDE) get pushed events so they can invalidate or refresh data without polling.
 
 **References:** `research/next-steps.md`, `packages/server`, `packages/webapp`, `@agent-zoo/types`.
 
@@ -24,7 +26,7 @@
 ## 1. Goals
 
 - Run a WebSocket server alongside the HTTP API.
-- Broadcast events when agents are created, updated, or deleted, and when the current agent changes.
+- Broadcast events when agents are created, updated, or deleted.
 - Provide a frontend hook that subscribes to the WebSocket and invalidates React Query cache (or updates state) on relevant events.
 - Keep the existing HTTP API and store as the source of truth; WebSocket is a notification channel only.
 
@@ -41,8 +43,7 @@
     - `agent:created` — when an agent is created (payload: agent or `{ id }`).
     - `agent:updated` — when an agent is updated (payload: agent or `{ id }`).
     - `agent:deleted` — when an agent is deleted (payload: `{ id }`).
-    - `current:changed` — when the current agent id changes (payload: `{ id }` or `currentAgentId`).
-- **Integration with store:** If the store is event-emitting, subscribe to its events and call broadcast. If not, hook into the route handlers (or a thin service layer) after successful create/update/delete/setCurrent and broadcast from there.
+- **Integration with store:** If the store is event-emitting, subscribe to its events and call broadcast. If not, hook into the route handlers (or a thin service layer) after successful create/update/delete and broadcast from there.
 - **No persistence of messages:** WebSocket is fire-and-forget; new clients get state by fetching over HTTP or React Query, not from replay.
 
 ---
@@ -55,7 +56,6 @@
   - On open: optionally nothing, or a simple ping/heartbeat if required later.
   - On message: parse JSON, read `event` and `data`. Use `useQueryClient()` from React Query and call:
     - `agent:created` / `agent:updated` / `agent:deleted` → `queryClient.invalidateQueries(['agents'])` (and optionally `['agent', data.id]` for single-agent queries).
-    - `current:changed` → invalidate current-agent query (e.g. `['current']` or whatever key is used).
   - On close/error: optional reconnect with backoff (can be simple or omitted for MVP).
   - Cleanup: close WebSocket on unmount.
 - **Usage:** Render the hook once in the app root (e.g. inside `QueryClientProvider`) so a single connection is shared. No need to pass query client if the hook uses `useQueryClient()` internally.
@@ -82,8 +82,8 @@
 ## 6. Checklist
 
 - [ ] WebSocket server runs with the HTTP server and broadcasts to all connected clients.
-- [ ] Events emitted: `agent:created`, `agent:updated`, `agent:deleted`, `current:changed`.
+- [ ] Events emitted: `agent:created`, `agent:updated`, `agent:deleted`.
 - [ ] Store or route layer triggers broadcast after successful mutations.
-- [ ] Frontend hook connects to WebSocket and invalidates React Query cache for agents and current agent on each event.
+- [ ] Frontend hook connects to WebSocket and invalidates React Query cache for agents on each event.
 - [ ] Hook is used once at app root; connection is closed on unmount.
 - [ ] WebSocket URL configurable for environment.

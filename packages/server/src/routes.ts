@@ -232,22 +232,4 @@ export async function registerRoutes(
       return reply.send(updated);
     },
   );
-
-  // Get current agent id
-  app.get("/api/current", async (_req: FastifyRequest, reply: FastifyReply) => {
-    const id = await store.getCurrentId();
-    return reply.send({ currentAgentId: id });
-  });
-
-  // Set current agent id
-  app.put<{ Body: { currentAgentId: string | null } }>(
-    "/api/current",
-    async (
-      req: FastifyRequest<{ Body: { currentAgentId: string | null } }>,
-      reply: FastifyReply,
-    ) => {
-      await store.setCurrentId(req.body?.currentAgentId ?? null);
-      return reply.send({ currentAgentId: req.body?.currentAgentId ?? null });
-    },
-  );
 }

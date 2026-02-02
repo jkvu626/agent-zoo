@@ -47,7 +47,6 @@ export interface Agent {
 
 export interface StoreShape {
   agents: Agent[];
-  currentAgentId: string | null;
 }
 
 export type CreateAgentInput = Omit<Agent, "id"> & { id?: string };

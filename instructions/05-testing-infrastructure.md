@@ -3,6 +3,7 @@
 > **STATUS: NOT COMPLETE — Nothing implemented**
 >
 > **Missing (all items):**
+>
 > - No Vitest installed or configured
 > - No `@testing-library/react`, `jest-dom`, or `jsdom`
 > - No test files anywhere (`*.test.ts`, `*.spec.ts`, `__tests__/`)
@@ -24,7 +25,7 @@
 - Install and configure Vitest for the monorepo (and per-package if needed).
 - Add React Testing Library and jsdom for webapp component tests.
 - Add server unit tests for the store (or equivalent core logic).
-- Add API integration tests for main routes (GET/POST/PUT/DELETE agents, current).
+- Add API integration tests for main routes (GET/POST/PUT/DELETE agents).
 - Add at least one representative frontend component test (e.g. Button or AgentListItem).
 - All tests runnable via pnpm/package scripts.
 
@@ -65,7 +66,6 @@ Install as dev dependencies (workspace root or in `packages/webapp` and `package
   - GET /api/agents/:id — returns 200 with agent when it exists; 404 when not.
   - PUT /api/agents/:id — updates and returns 200 with updated agent.
   - DELETE /api/agents/:id — returns 204 or 200 and agent is no longer returned by GET.
-  - GET /api/current and PUT /api/current — current agent behavior (optional but recommended).
 - Use valid and invalid payloads where validation is implemented; expect 400 for invalid.
 
 ---
@@ -104,6 +104,6 @@ Install as dev dependencies (workspace root or in `packages/webapp` and `package
 
 - [ ] Vitest, Testing Library, jest-dom, jsdom installed and configured.
 - [ ] Store unit tests: create, get, and at least one of update/delete; temp dir cleanup.
-- [ ] API integration tests: GET/POST agents, GET/PUT by id, and current-agent behavior where applicable.
+- [ ] API integration tests: GET/POST agents and GET/PUT by id.
 - [ ] At least one Button (or equivalent) component test with render and variant/disabled checks.
 - [ ] All tests pass via pnpm test (and per-package scripts).

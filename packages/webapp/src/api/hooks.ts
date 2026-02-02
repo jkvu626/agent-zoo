@@ -13,7 +13,6 @@ import {
 
 const agentsQueryKey = ["agents"];
 const agentQueryKey = (id: string) => ["agents", id];
-const currentAgentQueryKey = ["currentAgent"];
 const brainEntriesQueryKey = (id: string, filters?: BrainEntryFilters) => [
   "agents",
   id,
@@ -28,10 +27,6 @@ type UpdateAgentVariables = {
 
 type DeleteAgentVariables = {
   id: string;
-};
-
-type SetCurrentAgentVariables = {
-  id: string | null;
 };
 
 type CreateBrainEntryVariables = {
@@ -75,13 +70,6 @@ export function useAgent(id?: string) {
   });
 }
 
-export function useCurrentAgent() {
-  return useQuery({
-    queryKey: currentAgentQueryKey,
-    queryFn: () => client.getCurrent(),
-  });
-}
-
 export function useCreateAgent() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -120,16 +108,6 @@ export function useDeleteAgent() {
         prev ? prev.filter((agent) => agent.id !== variables.id) : prev,
       );
       queryClient.removeQueries({ queryKey: agentQueryKey(variables.id) });
-    },
-  });
-}
-
-export function useSetCurrentAgent() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ id }: SetCurrentAgentVariables) => client.setCurrent(id),
-    onSuccess: (current) => {
-      queryClient.setQueryData(currentAgentQueryKey, current);
     },
   });
 }

@@ -12,7 +12,7 @@
 
 ## 1. Goals
 
-- Create a typed API client for all agent and current-agent endpoints.
+- Create a typed API client for all agent endpoints.
 - Use React Query for data fetching, caching, and mutations.
 - Replace every use of mock agents with API-backed hooks.
 - Add loading skeletons, error messages with retry, and empty states.
@@ -31,8 +31,6 @@
   - `create(agent)` — POST `/api/agents`
   - `update(id, updates)` — PUT `/api/agents/:id`
   - `delete(id)` — DELETE `/api/agents/:id`
-  - `getCurrent()` — GET `/api/current`
-  - `setCurrent(id)` — PUT `/api/current` with body `{ currentAgentId: id }`
 - Use `Agent`, `CreateAgentInput`, `UpdateAgentInput` from `@agent-zoo/types` where applicable.
 - Return parsed JSON; do not handle errors in the client (let React Query / UI handle them).
 
@@ -45,11 +43,9 @@
 - Create hooks in `packages/webapp/src/api/` or `src/hooks/`:
   - `useAgents()` — query for all agents
   - `useAgent(id)` — query for single agent (enabled when `id` is present)
-  - `useCurrentAgent()` — query for current agent
   - `useCreateAgent()` — mutation for creating agent
   - `useUpdateAgent()` — mutation for updating agent
   - `useDeleteAgent()` — mutation for deleting agent
-  - `useSetCurrentAgent()` — mutation for switching current agent
 
 ---
 
@@ -104,9 +100,9 @@ Remove or deprecate `mockAgents` from data layer once all usages are replaced.
 
 ## 9. Checklist
 
-- [ ] API client module with all agent and current-agent methods.
+- [ ] API client module with all agent methods.
 - [ ] React Query added and `QueryClientProvider` wrapping the app.
-- [ ] Hooks: `useAgents`, `useAgent`, `useCurrentAgent`, and mutations for create, update, delete, setCurrent.
+- [ ] Hooks: `useAgents`, `useAgent`, and mutations for create, update, delete.
 - [ ] `AgentList`, `ZooStage`, `AgentView` use hooks instead of mock data.
 - [ ] Loading, error, and empty states for agent list and agent view.
 - [ ] Soul Editor loads from API and saves via `useUpdateAgent()`.

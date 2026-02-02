@@ -2,7 +2,7 @@
 
 > **STATUS: COMPLETE**
 >
-> All 4 MCP tools are implemented and functional (`agent_zoo_inject`, `agent_zoo_list_agents`, `agent_zoo_set_current`, `agent_zoo_get_agent`).
+> MCP tools are implemented and functional (`agent_zoo_inject`, `agent_zoo_list_agents`, `agent_zoo_get_agent`, and brain entry tools).
 >
 > _Note: This spec originally used `systemPrompt` but the implementation uses `systemPrompt`. Spec updated to match._
 
@@ -62,12 +62,11 @@ Implement in `packages/server/src/mcp.ts`.
 
 ### 3.1 Tool Summary
 
-| Tool name               | Purpose                                               | Primary use                                 |
-| ----------------------- | ----------------------------------------------------- | ------------------------------------------- |
-| `agent_zoo_inject`      | Get the current agent's compiled prompt for injection | **Main tool** — called when starting a chat |
-| `agent_zoo_list_agents` | List available agents (id, name)                      | Discover agents to switch to                |
-| `agent_zoo_set_current` | Set which agent is active                             | Switch agents without leaving IDE           |
-| `agent_zoo_get_agent`   | Get full agent config (not compiled)                  | Inspect raw agent data                      |
+| Tool name               | Purpose                                      | Primary use                                 |
+| ----------------------- | -------------------------------------------- | ------------------------------------------- |
+| `agent_zoo_inject`      | Get an agent's compiled prompt for injection | **Main tool** — called when starting a chat |
+| `agent_zoo_list_agents` | List available agents (id, name)             | Discover agents to switch to                |
+| `agent_zoo_get_agent`   | Get full agent config (not compiled)         | Inspect raw agent data                      |
 
 ### 3.2 Tool Schemas & Handlers
 
@@ -83,7 +82,7 @@ Returns the compiled system prompt for the current (or specified) agent, ready f
   "properties": {
     "agentId": {
       "type": "string",
-      "description": "Optional. Agent ID to inject. Defaults to current agent."
+      "description": "Agent ID to inject."
     },
     "format": {
       "type": "string",
@@ -91,7 +90,7 @@ Returns the compiled system prompt for the current (or specified) agent, ready f
       "description": "Output format. 'compiled' = single string prompt. 'structured' = JSON with systemPrompt + skills separate. Defaults to 'compiled'."
     }
   },
-  "required": []
+  "required": ["agentId"]
 }
 ```
 
@@ -129,7 +128,7 @@ Returns the compiled system prompt for the current (or specified) agent, ready f
 
 **Handler logic:**
 
-1. Resolve agent (use `agentId` param or fall back to `currentAgentId`).
+1. Resolve agent (use `agentId` param).
 2. If no agent found, return error.
 3. Filter skills to only `enabled: true`.
 4. If `format === "compiled"`: build the combined prompt string.
@@ -156,44 +155,11 @@ Lists all available agents for selection.
 ```json
 {
   "agents": [
-    { "id": "agent-1", "name": "Code Wizard", "isCurrent": true },
-    { "id": "agent-2", "name": "Documentation Pro", "isCurrent": false }
+    { "id": "agent-1", "name": "Code Wizard" },
+    { "id": "agent-2", "name": "Documentation Pro" }
   ]
 }
 ```
-
----
-
-#### `agent_zoo_set_current`
-
-Sets the active agent (so subsequent `agent_zoo_inject` calls use it).
-
-**Input schema:**
-
-```json
-{
-  "type": "object",
-  "properties": {
-    "agentId": {
-      "type": "string",
-      "description": "The agent ID to set as current."
-    }
-  },
-  "required": ["agentId"]
-}
-```
-
-**Response:**
-
-```json
-{
-  "success": true,
-  "message": "Current agent set to 'Code Wizard'",
-  "agentId": "agent-1"
-}
-```
-
-**Handler:** Call `store.setCurrentId(agentId)`. Verify agent exists first.
 
 ---
 
@@ -209,10 +175,10 @@ Returns the full raw agent configuration (for inspection, not injection).
   "properties": {
     "agentId": {
       "type": "string",
-      "description": "Optional. Agent ID to retrieve. Defaults to current agent."
+      "description": "Agent ID to retrieve."
     }
   },
-  "required": []
+  "required": ["agentId"]
 }
 ```
 
@@ -222,11 +188,13 @@ Returns the full raw agent configuration (for inspection, not injection).
 
 ## 4. Typical IDE Workflows
 
-### Workflow A: Inject current agent into fresh chat
+### Workflow A: Inject agent into fresh chat
 
 ```
 User: [starts new chat, wants to use their customized agent]
-IDE:  → calls agent_zoo_inject()
+IDE:  → calls agent_zoo_list_agents()
+      ← sees available agents
+      → calls agent_zoo_inject({ agentId: "agent-1" })
       ← receives compiled prompt
       → uses prompt as system message or context
 ```
@@ -237,17 +205,15 @@ IDE:  → calls agent_zoo_inject()
 User: "Switch to my Documentation Pro agent"
 IDE:  → calls agent_zoo_list_agents()
       ← sees available agents
-      → calls agent_zoo_set_current({ agentId: "agent-2" })
-      ← confirmation
-      → calls agent_zoo_inject()
+      → calls agent_zoo_inject({ agentId: "agent-2" })
       ← receives new prompt
 ```
 
 ### Workflow C: Inspect agent before using
 
 ```
-User: "What skills does my current agent have?"
-IDE:  → calls agent_zoo_inject({ format: "structured" })
+User: "What skills does my Documentation Pro agent have?"
+IDE:  → calls agent_zoo_inject({ agentId: "agent-2", format: "structured" })
       ← receives systemPrompt + skills list
       → displays to user
 ```
@@ -259,6 +225,8 @@ IDE:  → calls agent_zoo_inject({ format: "structured" })
 The `agent_zoo_inject` tool (with `format: "compiled"`) produces a single string. Recommended structure:
 
 ```
+You are now {agent.name}. Use agentId={agent.id} for all agent_zoo tool usage.
+
 {systemPrompt}
 
 ---
@@ -301,7 +269,6 @@ If the systemPrompt is empty, start with the skills section (or return an error/
 Common error codes:
 
 - `AGENT_NOT_FOUND` — Requested agent doesn't exist
-- `NO_CURRENT_AGENT` — No current agent set and none specified
 - `INVALID_FORMAT` — Unknown format parameter value
 
 ---
@@ -323,18 +290,17 @@ These are **not** in scope but may inform design:
 - **Context refs injection** — `contextRefs` field could include file paths or URLs to attach to the chat.
 - **Skill dependencies** — Skills that require other skills to be enabled.
 - **Agent templates** — Pre-built agents users can clone and customize.
-- **Per-workspace agents** — Different current agent per project/workspace.
+- **Per-workspace defaults** — Workspace-scoped agent suggestions or presets.
 
 ---
 
 ## 9. Checklist
 
 - [ ] `ListTools` returns all four tools with correct schemas.
-- [ ] `agent_zoo_inject` returns compiled prompt for current agent.
-- [ ] `agent_zoo_inject` supports `agentId` param to inject specific agent.
+- [ ] `agent_zoo_inject` returns compiled prompt for requested agent.
+- [ ] `agent_zoo_inject` requires `agentId` to inject a specific agent.
 - [ ] `agent_zoo_inject` supports `format: "structured"` for raw data.
-- [ ] `agent_zoo_list_agents` returns all agents with `isCurrent` flag.
-- [ ] `agent_zoo_set_current` updates current agent and confirms.
+- [ ] `agent_zoo_list_agents` returns all agents (id, name).
 - [ ] `agent_zoo_get_agent` returns full agent config.
 - [ ] All tools handle missing/invalid agent gracefully with error responses.
 - [ ] Compiled prompt correctly combines systemPrompt + enabled skills only.

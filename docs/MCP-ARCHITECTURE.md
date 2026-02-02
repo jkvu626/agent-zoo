@@ -71,12 +71,10 @@ So we need: **one source of truth** (a store) that the webapp writes to and an *
       "contextRefs": [],
       "appearanceSeed": "helper"
     }
-  ],
-  "currentAgentId": "agent-1"
+  ]
 }
 ```
 
-- `currentAgentId`: which agent the IDE should use in this workspace (or globally).
 - `skills`: Array of skill objects with `enabled` flag (not a simple boolean map).
 
 You can later add a DB; the server remains the only reader/writer.
@@ -97,34 +95,31 @@ So Cursor runs the server as an MCP server; the webapp opens `http://localhost:3
 | URI                                       | Description                                                                                                                         |
 | ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
 | `agent-zoo://agents`                      | List of all agents (id, name).                                                                                                      |
-| `agent-zoo://agents/current`              | Full config for the agent selected as “current”.                                                                                    |
 | `agent-zoo://agents/{id}`                 | Full config for one agent.                                                                                                          |
 | `agent-zoo://agents/{id}/brain`           | Brain timeline entries for that agent. Query params: `type`, `tags` (comma-separated), `dateFrom`, `dateTo`, `pinned` (true/false). |
 | `agent-zoo://agents/{id}/brain/{entryId}` | Single brain entry by ID.                                                                                                           |
 
-The IDE agent fetches `agent-zoo://agents/current` to know personality and which skills are on. Brain resources expose the agent’s timeline (decisions, milestones, notes, summaries).
+The IDE agent fetches `agent-zoo://agents/{id}` (or uses the `agent_zoo_inject` tool) to know personality and which skills are on. Brain resources expose the agent’s timeline (decisions, milestones, notes, summaries).
 
 **MCP tools**:
 
-| Tool                            | Purpose                                                                                                                                         |
-| ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `agent_zoo_inject`              | Returns compiled prompt or structured data for injection. Args: `agentId?`, `format` (`"compiled"` \| `"structured"`).                          |
-| `agent_zoo_list_agents`         | Lists all agents with `isCurrent` flag. No args.                                                                                                |
-| `agent_zoo_set_current`         | Sets `currentAgentId`. Args: `agentId` (required).                                                                                              |
-| `agent_zoo_get_agent`           | Returns full agent config (not compiled). Args: `agentId?` (defaults to current).                                                               |
-| `agent_zoo_create_brain_entry`  | Create a brain timeline entry. Args: `agentId?`, `type` (decision \| milestone \| note \| summary), `content`, `tags?`, `pinned?`, `metadata?`. |
-| `agent_zoo_update_brain_entry`  | Update an existing brain entry. Args: `agentId?`, `entryId` (required), `type?`, `content?`, `tags?`, `pinned?`, `metadata?`.                   |
-| `agent_zoo_delete_brain_entry`  | Delete a brain entry. Args: `agentId?`, `entryId` (required).                                                                                   |
-| `agent_zoo_query_brain_entries` | Query brain entries with filters. Args: `agentId?`, `type?`, `tags?`, `dateFrom?`, `dateTo?`, `pinned?`.                                        |
+| Tool                            | Purpose                                                                                                                                                   |
+| ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `agent_zoo_inject`              | Returns compiled prompt or structured data for injection. Args: `agentId` (required), `format` (`"compiled"` \| `"structured"`).                          |
+| `agent_zoo_list_agents`         | Lists all agents (id, name). No args.                                                                                                                     |
+| `agent_zoo_get_agent`           | Returns full agent config (not compiled). Args: `agentId` (required).                                                                                     |
+| `agent_zoo_create_brain_entry`  | Create a brain timeline entry. Args: `agentId` (required), `type` (decision \| milestone \| note \| summary), `content`, `tags?`, `pinned?`, `metadata?`. |
+| `agent_zoo_update_brain_entry`  | Update an existing brain entry. Args: `agentId` (required), `entryId` (required), `type?`, `content?`, `tags?`, `pinned?`, `metadata?`.                   |
+| `agent_zoo_delete_brain_entry`  | Delete a brain entry. Args: `agentId` (required), `entryId` (required).                                                                                   |
+| `agent_zoo_query_brain_entries` | Query brain entries with filters. Args: `agentId` (required), `type?`, `tags?`, `dateFrom?`, `dateTo?`, `pinned?`.                                        |
 
 The primary use case is `agent_zoo_inject` — called when starting a fresh chat to get the compiled system prompt.
 
 **MCP prompts**:
 
-| Name                      | Description                                                                            |
-| ------------------------- | -------------------------------------------------------------------------------------- |
-| `agent_zoo_use_current`   | “Use Current Agent” — inject the current agent’s persona and skills as a user message. |
-| `agent_zoo_use_{agentId}` | “Use Agent: {name}” — inject that agent’s persona and skills (one prompt per agent).   |
+| Name                      | Description                                                                          |
+| ------------------------- | ------------------------------------------------------------------------------------ |
+| `agent_zoo_use_{agentId}` | “Use Agent: {name}” — inject that agent’s persona and skills (one prompt per agent). |
 
 Prompts return a single user message containing the injection text (intro + systemPrompt + active skills). Use when the IDE supports prompt templates to adopt an agent in one action.
 
@@ -136,8 +131,6 @@ Prompts return a single user message containing the injection text (intro + syst
 | GET    | `/api/agents/:id` | Get one agent config.                         |
 | PUT    | `/api/agents/:id` | Update one agent (personality, skills, etc.). |
 | POST   | `/api/agents`     | Create agent.                                 |
-| GET    | `/api/current`    | Get current agent id.                         |
-| PUT    | `/api/current`    | Set current agent id.                         |
 
 Server loads/saves the store on each read/write (or use a simple in-memory cache with write-through).
 
@@ -174,7 +167,7 @@ The server must:
 - Speak MCP over stdio (or SSE if you prefer).
 - Start the HTTP server in the same process so one run serves both MCP and webapp API.
 
-When the user (or the agent) needs the current agent’s config: use the **prompt** `agent_zoo_use_current` to inject persona in one step, or call **tool** `agent_zoo_inject` for compiled/structured output. For raw config, use `agent_zoo_get_agent` or the resource `agent-zoo://agents/current`. Brain tools and `agent-zoo://agents/{id}/brain` support reading/writing the agent’s timeline.
+When the user (or the agent) needs an agent’s config: use the **prompt** `agent_zoo_use_{agentId}` to inject persona in one step, or call **tool** `agent_zoo_inject` with `agentId` for compiled/structured output. For raw config, use `agent_zoo_get_agent` or the resource `agent-zoo://agents/{id}`. Brain tools and `agent-zoo://agents/{id}/brain` support reading/writing the agent’s timeline.
 
 ---
 

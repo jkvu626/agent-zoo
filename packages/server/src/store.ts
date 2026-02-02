@@ -12,9 +12,6 @@ import type {
 export interface AgentStore {
   getAll(): Promise<Agent[]>;
   getById(id: string): Promise<Agent | null>;
-  getCurrent(): Promise<Agent | null>;
-  getCurrentId(): Promise<string | null>;
-  setCurrentId(id: string | null): Promise<void>;
   create(agent: CreateAgentInput): Promise<Agent>;
   update(id: string, data: Partial<Omit<Agent, "id">>): Promise<Agent | null>;
   delete(id: string): Promise<boolean>;
@@ -43,7 +40,6 @@ export interface AgentStore {
 
 const defaultStore: StoreShape = {
   agents: [],
-  currentAgentId: null,
 };
 
 const DEFAULT_CATEGORY = {
@@ -123,9 +119,16 @@ export class JsonFileStore implements AgentStore {
     const { dirname } = await import("node:path");
     try {
       const raw = await readFile(this.path, "utf-8");
-      const parsed = JSON.parse(raw) as StoreShape;
-      let didChange = false;
-      const migratedAgents = parsed.agents.map((agent) => {
+      const parsed = JSON.parse(raw) as {
+        agents?: Agent[];
+        currentAgentId?: string | null;
+      };
+      let didChange = "currentAgentId" in parsed;
+      const rawAgents = Array.isArray(parsed.agents) ? parsed.agents : [];
+      if (!Array.isArray(parsed.agents)) {
+        didChange = true;
+      }
+      const migratedAgents = rawAgents.map((agent) => {
         const result = migrateAgent(agent);
         if (result.didChange) {
           didChange = true;
@@ -133,7 +136,6 @@ export class JsonFileStore implements AgentStore {
         return result.agent;
       });
       const nextStore = {
-        ...parsed,
         agents: migratedAgents,
       };
       if (didChange) {
@@ -172,23 +174,6 @@ export class JsonFileStore implements AgentStore {
   async getById(id: string): Promise<Agent | null> {
     const store = await this.read();
     return store.agents.find((a) => a.id === id) ?? null;
-  }
-
-  async getCurrent(): Promise<Agent | null> {
-    const store = await this.read();
-    if (!store.currentAgentId) return null;
-    return this.getById(store.currentAgentId);
-  }
-
-  async getCurrentId(): Promise<string | null> {
-    const store = await this.read();
-    return store.currentAgentId;
-  }
-
-  async setCurrentId(id: string | null): Promise<void> {
-    const store = await this.read();
-    store.currentAgentId = id;
-    await this.write(store);
   }
 
   async create(input: CreateAgentInput): Promise<Agent> {
@@ -246,7 +231,6 @@ export class JsonFileStore implements AgentStore {
     const store = await this.read();
     const before = store.agents.length;
     store.agents = store.agents.filter((a) => a.id !== id);
-    if (store.currentAgentId === id) store.currentAgentId = null;
     if (store.agents.length === before) return false;
     await this.write(store);
     return true;

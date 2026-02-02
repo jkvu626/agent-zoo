@@ -56,14 +56,15 @@ const buildCompiledPrompt = (systemPrompt: string, skills: Skill[]): string => {
   return sections.join("\n\n");
 };
 
-const buildInjectionMessage = (
-  systemPrompt: string,
-  skills: Skill[],
-): string => {
-  const compiled = buildCompiledPrompt(systemPrompt, skills);
+const buildUsageInstruction = (agent: Agent): string =>
+  `You are now ${agent.name}. Use agentId=${agent.id} for all agent_zoo tool usage.`;
+
+const buildInjectionMessage = (agent: Agent, skills: Skill[]): string => {
+  const compiled = buildCompiledPrompt(agent.systemPrompt, skills);
   const intro =
     "Adopt the following agent persona and skills for this conversation.";
-  return compiled ? `${intro}\n\n${compiled}` : intro;
+  const instruction = buildUsageInstruction(agent);
+  return [intro, instruction, compiled].filter(Boolean).join("\n\n");
 };
 
 const promptNameForAgentId = (agentId: string) =>
@@ -73,34 +74,19 @@ const resolveAgent = async (
   store: AgentStore,
   agentId?: string,
 ): Promise<{ agent?: Agent; error?: ReturnType<typeof errorResponse> }> => {
-  if (agentId) {
-    const agent = await store.getById(agentId);
-    if (!agent) {
-      return {
-        error: errorResponse(
-          "AGENT_NOT_FOUND",
-          `Agent with ID '${agentId}' not found.`,
-        ),
-      };
-    }
-    return { agent };
-  }
-
-  const currentId = await store.getCurrentId();
-  if (!currentId) {
+  const normalizedId = typeof agentId === "string" ? agentId.trim() : "";
+  if (!normalizedId) {
     return {
-      error: errorResponse(
-        "NO_CURRENT_AGENT",
-        "No current agent set and none specified.",
-      ),
+      error: errorResponse("INVALID_ARGUMENTS", "agentId is required."),
     };
   }
-  const agent = await store.getById(currentId);
+
+  const agent = await store.getById(normalizedId);
   if (!agent) {
     return {
       error: errorResponse(
         "AGENT_NOT_FOUND",
-        `Agent with ID '${currentId}' not found.`,
+        `Agent with ID '${normalizedId}' not found.`,
       ),
     };
   }
@@ -145,11 +131,6 @@ export async function runMcpServer(store: AgentStore): Promise<void> {
           name: "Agent list",
           description: "All agents",
         },
-        {
-          uri: `${AGENT_ZOO_SCHEME}://agents/current`,
-          name: "Current agent",
-          description: "Config for the current agent",
-        },
         ...agentResources,
       ],
     };
@@ -172,10 +153,7 @@ export async function runMcpServer(store: AgentStore): Promise<void> {
         throw new Error(`Unknown resource: ${uri}`);
       }
 
-      if (segments[1] === "current") {
-        const current = await store.getCurrent();
-        content = JSON.stringify(current ?? {});
-      } else if (segments.length === 2 && segments[1]) {
+      if (segments.length === 2 && segments[1]) {
         const agent = await store.getById(segments[1]);
         content = JSON.stringify(agent ?? {});
       } else if (segments.length >= 3 && segments[2] === "brain") {
@@ -229,11 +207,6 @@ export async function runMcpServer(store: AgentStore): Promise<void> {
     const agents = await store.getAll();
     return {
       prompts: [
-        {
-          name: "agent_zoo_use_current",
-          title: "Use Current Agent",
-          description: "Inject the current agent's persona and skills.",
-        },
         ...agents.map((agent) => ({
           name: promptNameForAgentId(agent.id),
           title: `Use Agent: ${agent.name}`,
@@ -245,11 +218,9 @@ export async function runMcpServer(store: AgentStore): Promise<void> {
 
   server.setRequestHandler(GetPromptRequestSchema, async ({ params }) => {
     const { name } = params;
-    let agentId: string | undefined;
+    let agentId: string;
 
-    if (name === "agent_zoo_use_current") {
-      agentId = undefined;
-    } else if (name.startsWith(PROMPT_PREFIX)) {
+    if (name.startsWith(PROMPT_PREFIX)) {
       const encoded = name.slice(PROMPT_PREFIX.length);
       agentId = decodeURIComponent(encoded);
     } else {
@@ -265,7 +236,7 @@ export async function runMcpServer(store: AgentStore): Promise<void> {
 
     const agent = resolved.agent!;
     const enabledSkills = agent.skills.filter((skill) => skill.enabled);
-    const text = buildInjectionMessage(agent.systemPrompt, enabledSkills);
+    const text = buildInjectionMessage(agent, enabledSkills);
 
     return {
       description: `Use ${agent.name} in this conversation.`,
@@ -292,8 +263,7 @@ export async function runMcpServer(store: AgentStore): Promise<void> {
           properties: {
             agentId: {
               type: "string",
-              description:
-                "Optional. Agent ID to inject. Defaults to current agent.",
+              description: "Agent ID to inject.",
             },
             format: {
               type: "string",
@@ -302,7 +272,7 @@ export async function runMcpServer(store: AgentStore): Promise<void> {
                 "Output format. 'compiled' = single prompt string. 'structured' = JSON with systemPrompt + skills.",
             },
           },
-          required: [],
+          required: ["agentId"],
         },
       },
       {
@@ -315,20 +285,6 @@ export async function runMcpServer(store: AgentStore): Promise<void> {
         },
       },
       {
-        name: "agent_zoo_set_current",
-        description: "Set which agent is active for future injections.",
-        inputSchema: {
-          type: "object",
-          properties: {
-            agentId: {
-              type: "string",
-              description: "The agent ID to set as current.",
-            },
-          },
-          required: ["agentId"],
-        },
-      },
-      {
         name: "agent_zoo_get_agent",
         description: "Get the full raw agent configuration.",
         inputSchema: {
@@ -336,11 +292,10 @@ export async function runMcpServer(store: AgentStore): Promise<void> {
           properties: {
             agentId: {
               type: "string",
-              description:
-                "Optional. Agent ID to retrieve. Defaults to current agent.",
+              description: "Agent ID to retrieve.",
             },
           },
-          required: [],
+          required: ["agentId"],
         },
       },
       {
@@ -351,8 +306,7 @@ export async function runMcpServer(store: AgentStore): Promise<void> {
           properties: {
             agentId: {
               type: "string",
-              description:
-                "Optional. Agent ID to write to. Defaults to current agent.",
+              description: "Agent ID to write to.",
             },
             type: {
               type: "string",
@@ -378,7 +332,7 @@ export async function runMcpServer(store: AgentStore): Promise<void> {
                 "Optional metadata (source, sessionId, workspaceId).",
             },
           },
-          required: ["type", "content"],
+          required: ["agentId", "type", "content"],
         },
       },
       {
@@ -389,8 +343,7 @@ export async function runMcpServer(store: AgentStore): Promise<void> {
           properties: {
             agentId: {
               type: "string",
-              description:
-                "Optional. Agent ID to update. Defaults to current agent.",
+              description: "Agent ID to update.",
             },
             entryId: {
               type: "string",
@@ -419,7 +372,7 @@ export async function runMcpServer(store: AgentStore): Promise<void> {
               description: "Updated metadata.",
             },
           },
-          required: ["entryId"],
+          required: ["agentId", "entryId"],
         },
       },
       {
@@ -430,15 +383,14 @@ export async function runMcpServer(store: AgentStore): Promise<void> {
           properties: {
             agentId: {
               type: "string",
-              description:
-                "Optional. Agent ID to delete from. Defaults to current agent.",
+              description: "Agent ID to delete from.",
             },
             entryId: {
               type: "string",
               description: "The brain entry ID to delete.",
             },
           },
-          required: ["entryId"],
+          required: ["agentId", "entryId"],
         },
       },
       {
@@ -449,8 +401,7 @@ export async function runMcpServer(store: AgentStore): Promise<void> {
           properties: {
             agentId: {
               type: "string",
-              description:
-                "Optional. Agent ID to query. Defaults to current agent.",
+              description: "Agent ID to query.",
             },
             type: {
               type: "string",
@@ -475,7 +426,7 @@ export async function runMcpServer(store: AgentStore): Promise<void> {
               description: "Filter by pinned state.",
             },
           },
-          required: [],
+          required: ["agentId"],
         },
       },
     ],
@@ -486,40 +437,12 @@ export async function runMcpServer(store: AgentStore): Promise<void> {
     const args = (params.arguments ?? {}) as Record<string, unknown>;
 
     if (name === "agent_zoo_list_agents") {
-      const [agents, currentId] = await Promise.all([
-        store.getAll(),
-        store.getCurrentId(),
-      ]);
+      const agents = await store.getAll();
       return jsonResponse({
         agents: agents.map((agent) => ({
           id: agent.id,
           name: agent.name,
-          isCurrent: agent.id === currentId,
         })),
-      });
-    }
-
-    if (name === "agent_zoo_set_current") {
-      const agentId =
-        typeof args.agentId === "string" ? args.agentId.trim() : "";
-      if (!agentId) {
-        return errorResponse(
-          "INVALID_ARGUMENTS",
-          "agentId is required to set the current agent.",
-        );
-      }
-      const agent = await store.getById(agentId);
-      if (!agent) {
-        return errorResponse(
-          "AGENT_NOT_FOUND",
-          `Agent with ID '${agentId}' not found.`,
-        );
-      }
-      await store.setCurrentId(agentId);
-      return jsonResponse({
-        success: true,
-        message: `Current agent set to '${agent.name}'`,
-        agentId,
       });
     }
 
@@ -707,7 +630,9 @@ export async function runMcpServer(store: AgentStore): Promise<void> {
         });
       }
 
-      const prompt = buildCompiledPrompt(agent.systemPrompt, enabledSkills);
+      const instruction = buildUsageInstruction(agent);
+      const compiled = buildCompiledPrompt(agent.systemPrompt, enabledSkills);
+      const prompt = compiled ? `${instruction}\n\n${compiled}` : instruction;
       return jsonResponse({
         agentId: agent.id,
         agentName: agent.name,

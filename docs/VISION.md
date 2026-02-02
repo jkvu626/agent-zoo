@@ -28,6 +28,7 @@ The zoo window is intentionally more interactive than a typical dashboard. Agent
 Agent interaction is a **core planned feature**, not just a nice-to-have. The primary use case is **task handoff between agents** — imagine finishing a conversation with your "Architect" agent and handing the implementation plan to your "Builder" agent, with full context preserved.
 
 Future expansion includes:
+
 - **Parallel consultation:** Ask multiple specialized agents about the same problem
 - **Specialized delegation:** An agent recognizing it needs help and pulling in another agent's expertise
 
@@ -100,9 +101,10 @@ AgentZoo is not a standalone chat app. It's a **configuration hub** that your ID
 ```
 
 **Bidirectional data flow:**
+
 - **Webapp writes config:** You customize agents in the cozy UI — set their personality, toggle skills, view their Brain.
 - **Store persists:** A JSON file (or future database) holds all agent configurations.
-- **IDE reads config:** Your IDE (Cursor, VS Code, etc.) connects to AgentZoo via MCP and reads the current agent's config. It injects the personality, skills, and brain context into the chat.
+- **IDE reads config:** Your IDE (Cursor, VS Code, etc.) connects to AgentZoo via MCP and reads a chosen agent's config. It injects the personality, skills, and brain context into the chat.
 - **IDE writes memory:** During conversations, the IDE extracts important context and writes it back to the agent's Brain via MCP tools. This is how agents "learn" from your work sessions.
 
 The result: **What you configure in the zoo shows up in your code editor.**

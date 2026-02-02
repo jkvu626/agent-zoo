@@ -6,17 +6,17 @@
 
 ## Recommended Stack (TL;DR)
 
-| Layer | Choice | Why |
-|-------|--------|-----|
-| **Runtime** | Node.js 20+ | One language everywhere, MCP SDK in TS, huge ecosystem. |
-| **Language** | TypeScript | End-to-end types, fewer runtime surprises, great DX. |
-| **Frontend** | React 18 + Vite | Fast, familiar, best ecosystem for motion and polished UI. |
-| **Styling** | Tailwind + design tokens (CSS variables) | Utility-first + one source of truth for colors/fonts so the whole app feels cohesive. |
-| **Motion** | Framer Motion | Spring-based animations, layout animations, perfect for characters and “cozy” feel. |
-| **UI primitives** | Radix UI | Accessible, unstyled—you own the look. No fighting a pre-styled kit. |
-| **Backend API** | Fastify | Lightweight, fast, TypeScript-friendly. Sits next to MCP in one process. |
-| **MCP** | `@modelcontextprotocol/sdk` | Official SDK; implement server in same Node process as HTTP. |
-| **Store (MVP)** | JSON file | Simple, no setup. Abstract behind an interface so you can swap to SQLite/DB later. |
+| Layer             | Choice                                   | Why                                                                                   |
+| ----------------- | ---------------------------------------- | ------------------------------------------------------------------------------------- |
+| **Runtime**       | Node.js 20+                              | One language everywhere, MCP SDK in TS, huge ecosystem.                               |
+| **Language**      | TypeScript                               | End-to-end types, fewer runtime surprises, great DX.                                  |
+| **Frontend**      | React 18 + Vite                          | Fast, familiar, best ecosystem for motion and polished UI.                            |
+| **Styling**       | Tailwind + design tokens (CSS variables) | Utility-first + one source of truth for colors/fonts so the whole app feels cohesive. |
+| **Motion**        | Framer Motion                            | Spring-based animations, layout animations, perfect for characters and “cozy” feel.   |
+| **UI primitives** | Radix UI                                 | Accessible, unstyled—you own the look. No fighting a pre-styled kit.                  |
+| **Backend API**   | Fastify                                  | Lightweight, fast, TypeScript-friendly. Sits next to MCP in one process.              |
+| **MCP**           | `@modelcontextprotocol/sdk`              | Official SDK; implement server in same Node process as HTTP.                          |
+| **Store (MVP)**   | JSON file                                | Simple, no setup. Abstract behind an interface so you can swap to SQLite/DB later.    |
 
 **Result:** One Node process runs the MCP server + Fastify. The React app (Vite dev or static build) talks to that process over HTTP. Same repo, shared types, scalable when you add auth/DB/hosting.
 
@@ -111,7 +111,7 @@
 
 ### Backend (same process as MCP)
 
-- **Fastify**: HTTP API for the webapp (CRUD agents, get/set current agent). Plugin ecosystem, TypeScript support, low overhead.
+- **Fastify**: HTTP API for the webapp (CRUD agents). Plugin ecosystem, TypeScript support, low overhead.
 - **MCP server**: Implement with `@modelcontextprotocol/sdk`, in the same Node process. Listen on stdio (or SSE) for Cursor; Cursor starts the process and talks MCP over stdio.
 - **Store**: MVP = read/write a single JSON file (e.g. `agents.json`). Abstract behind an `AgentStore` interface; later swap to SQLite or a real DB without changing routes or MCP resources.
 
@@ -139,6 +139,7 @@ Define these once and use them everywhere:
    Tailwind theme or CSS variables: e.g. `panel-radius`, `card-padding`. Keeps panels and cards visually consistent.
 
 Put tokens in:
+
 - `tailwind.config.ts` (theme.extend)
 - Optional: `src/theme.css` or `src/design-tokens.ts` if you want a single source of truth that Tailwind and Framer Motion both use.
 
@@ -156,10 +157,10 @@ Put tokens in:
 
 ## Summary
 
-| Concern | Choice |
-|--------|--------|
-| Personal + scalable | Node + TypeScript, one server (MCP + HTTP), store behind an interface. |
-| “Looking good” | Radix (you own the look) + Tailwind with a strict custom theme + Framer Motion + design tokens from day one. |
-| Your preference | TypeScript, React, Node—this stack aligns and doubles down on aesthetics and future flexibility. |
+| Concern             | Choice                                                                                                       |
+| ------------------- | ------------------------------------------------------------------------------------------------------------ |
+| Personal + scalable | Node + TypeScript, one server (MCP + HTTP), store behind an interface.                                       |
+| “Looking good”      | Radix (you own the look) + Tailwind with a strict custom theme + Framer Motion + design tokens from day one. |
+| Your preference     | TypeScript, React, Node—this stack aligns and doubles down on aesthetics and future flexibility.             |
 
 Next step could be a minimal repo layout (e.g. `packages/server`, `packages/webapp`, `packages/types`) and a one-page “stack checklist” (Vite, Tailwind theme, Radix, Framer Motion, Fastify, MCP SDK) so you can tick them off as you build.
